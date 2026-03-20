@@ -1,4 +1,4 @@
-# 🤖 QueryDash — AI Chatbot That Responds with Dashboards
+# 🤖 AI Chatbot That Responds with User interfaces 
 
 > **An AI-powered conversational system that transforms natural language queries into real-time, interactive dashboards — instead of static text responses.**
 
