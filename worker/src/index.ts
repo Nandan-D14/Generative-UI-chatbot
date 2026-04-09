@@ -1,17 +1,20 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { clerkMiddleware } from './middleware/clerk';
+import { dbMiddleware } from './middleware/db';
 import { webhookRoutes } from './routes/webhook';
 import { chatRoutes } from './routes/chat';
 import { kbRoutes } from './routes/kb';
 import { artifactRoutes } from './routes/artifacts';
 import { registryRoutes } from './routes/registry';
-import type { Env } from './types';
+import type { AppEnv } from './types';
 
-const app = new Hono<{ Bindings: Env }>();
+const app = new Hono<AppEnv>();
+
+app.use('*', dbMiddleware);
 
 app.use('*', cors({
-  origin: (env) => env.FRONTEND_URL,
+  origin: (_origin, c) => c.env.FRONTEND_URL,
   credentials: true
 }));
 

@@ -1,15 +1,20 @@
 import { Hono } from 'hono';
-import type { Env } from '../types';
+import { generateEmbeddings } from '../lib/llm';
+import type { AppEnv, Env } from '../types';
 
-export function kbRoutes(app: Hono<{ Bindings: Env }>) {
-  const router = new Hono<{ Bindings: Env }>();
+export function kbRoutes(app: Hono<AppEnv>) {
+  const router = new Hono<AppEnv>();
 
   router.post('/upload', async (c) => {
     const userId = c.get('userId') as string;
     const formData = await c.req.formData();
-    const file = formData.get('file') as File;
+    const fileEntry = formData.get('file');
 
-    if (!file) return c.json({ error: 'No file provided' }, 400);
+    if (!fileEntry || typeof fileEntry === 'string') {
+      return c.json({ error: 'No file provided' }, 400);
+    }
+
+    const file = fileEntry as File;
 
     const id = crypto.randomUUID();
     const r2Key = `documents/${userId}/${id}`;
@@ -21,7 +26,7 @@ export function kbRoutes(app: Hono<{ Bindings: Env }>) {
     ).bind(id, userId, file.name, file.type, file.size, r2Key, Date.now()).run();
 
     try {
-      await processDocument(id, r2Key, userId, c.env);
+      await processDocument(id, r2Key, userId, file.name, c.env);
     } catch {
       await c.env.DB.prepare('UPDATE documents SET status = ? WHERE id = ?').bind('failed', id).run();
       return c.json({ error: 'Processing failed', id, status: 'failed' }, 500);
@@ -58,17 +63,17 @@ export function kbRoutes(app: Hono<{ Bindings: Env }>) {
   app.route('/api/kb', router);
 }
 
-async function processDocument(docId: string, r2Key: string, userId: string, env: Env) {
+async function processDocument(docId: string, r2Key: string, userId: string, docName: string, env: Env) {
   const file = await env.R2.get(r2Key);
   const content = await file?.text();
   if (!content) throw new Error('File content empty');
 
   const chunks = chunkText(content, 512, 50);
-  const embeddings = await generateEmbeddings(chunks, env);
+  const embeddings = await generateEmbeddings(chunks, 'passage', env);
   const vectors = embeddings.map((vec, i) => ({
     id: `${docId}-${i}`,
     values: vec,
-    metadata: { userId, docId, chunk: chunks[i] }
+    metadata: { userId, docId, docName, chunk: chunks[i] }
   }));
 
   await env.VECTORIZE.upsert(vectors);
@@ -88,15 +93,3 @@ function chunkText(text: string, chunkSize: number, overlap: number): string[] {
   return chunks;
 }
 
-async function generateEmbeddings(chunks: string[], env: Env): Promise<number[][]> {
-  const response = await fetch('https://api.openai.com/v1/embeddings', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${env.LLM_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({ input: chunks, model: 'text-embedding-ada-002' })
-  });
-  const data = await response.json();
-  return data.data.map((d: any) => d.embedding);
-}

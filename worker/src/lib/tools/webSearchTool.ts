@@ -1,3 +1,13 @@
+type TavilyResult = {
+  title?: string;
+  url?: string;
+  content?: string;
+};
+
+type TavilyResponse = {
+  results?: TavilyResult[];
+};
+
 export class WebSearchTool {
   name = 'web_search';
   description = "Search the web for current information. Use this when the user asks about current events, recent data, or information not in the knowledge base.";
@@ -13,10 +23,14 @@ export class WebSearchTool {
       },
       body: JSON.stringify({ query, max_results: 5 })
     });
-    const data = await response.json();
+    const data = await response.json() as TavilyResponse;
 
-    return data.results.map((r: any) =>
-      `[${r.title}](${r.url})\n${r.content.slice(0, 300)}`
+    if (!response.ok || !Array.isArray(data.results)) {
+      return 'Web search is currently unavailable.';
+    }
+
+    return data.results.map((result) =>
+      `[${result.title || 'Untitled'}](${result.url || '#'})\n${(result.content || '').slice(0, 300)}`
     ).join('\n\n---\n\n');
   }
 }

@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import { getRegistryContext, deleteComponent } from '../lib/registry';
-import type { Env } from '../types';
+import type { AppEnv } from '../types';
 
-export function registryRoutes(app: Hono<{ Bindings: Env }>) {
-  const router = new Hono<{ Bindings: Env }>();
+export function registryRoutes(app: Hono<AppEnv>) {
+  const router = new Hono<AppEnv>();
 
   router.get('/', async (c) => {
     const userId = c.get('userId') as string;

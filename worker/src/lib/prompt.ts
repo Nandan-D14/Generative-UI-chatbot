@@ -45,7 +45,7 @@ REACT REASONING LOOP:
 You have access to tools. Use the following format for each step:
 
 Thought: [your reasoning about what to do next]
-Action: [tool name from: rag_search, web_search, registry_lookup, generate_component]
+Action: [tool name from the available tools list]
 Action Input: [input to the tool]
 
 Wait for the tool result (Observation), then continue:
@@ -61,7 +61,7 @@ Final Answer: {the JSON response matching the SYSTEM_PROMPT schema}
 TOOL USAGE STRATEGY:
 1. First check the component registry — reuse existing components when possible
 2. Search the knowledge base if the query relates to the user's documents
-3. Search the web if the query needs current or external information
+3. Search the web if the query needs current or external information and the web_search tool is available
 4. Generate a new component only if nothing in the registry fits
 5. Limit tool calls to 3-5 maximum — be efficient
 

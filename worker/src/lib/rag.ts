@@ -1,6 +1,5 @@
-import { reactAgent, ReActStep } from './agent';
-import type { ChatMessage } from './agent';
-import type { Env } from '../types';
+import { reactAgent } from './agent';
+import type { ChatMessage, Env } from '../types';
 
 export async function streamReActResponse(
   userMessage: string,

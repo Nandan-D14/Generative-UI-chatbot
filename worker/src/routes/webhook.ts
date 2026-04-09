@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
-import type { Env } from '../types';
+import type { AppEnv, Env } from '../types';
 
-export function webhookRoutes(app: Hono<{ Bindings: Env }>) {
-  const router = new Hono<{ Bindings: Env }>();
+export function webhookRoutes(app: Hono<AppEnv>) {
+  const router = new Hono<AppEnv>();
 
   // Clerk webhook — NO auth middleware (Clerk sends its own signature)
   router.post('/clerk', async (c) => {
