@@ -1,0 +1,23 @@
+name = "visualmind-worker"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "visualmind"
+database_id = "YOUR_D1_ID"
+
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "visualmind-kb"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "visualmind-storage"
+
+[vars]
+CLERK_SECRET_KEY = ""
+LLM_API_KEY = ""
+LLM_BASE_URL = "https://api.openai.com/v1"
+FRONTEND_URL = "http://localhost:5173"
+SEARCH_API_KEY = ""
