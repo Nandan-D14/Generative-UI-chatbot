@@ -13,21 +13,36 @@ type Props = {
 
 export function ChatSidebar({ chats, activeChat, onSelectChat, onNewChat }: Props) {
   return (
-    <div className="w-64 border-r border-neutral-200 bg-white flex flex-col">
-      <div className="p-4 border-b border-neutral-100">
-        <button onClick={onNewChat} className="w-full py-2 px-4 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors">
+    <div className="flex w-72 flex-col border-r border-stone-200/80 bg-[linear-gradient(180deg,rgba(247,243,235,0.96),rgba(242,237,228,0.88))] backdrop-blur">
+      <div className="border-b border-stone-200/80 px-5 pb-5 pt-6">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-400">Chat workspace</p>
+        <h2 className="mt-2 text-xl font-semibold tracking-tight text-neutral-900">Conversations</h2>
+        <p className="mt-2 text-sm leading-6 text-neutral-500">
+          Jump across prompts, visuals, and saved reasoning without leaving the chat flow.
+        </p>
+        <button
+          onClick={onNewChat}
+          className="mt-5 w-full rounded-2xl bg-[linear-gradient(135deg,#111827_0%,#334155_100%)] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/10 transition-transform duration-150 hover:-translate-y-0.5"
+        >
           + New Chat
         </button>
       </div>
-      <div className="flex-1 overflow-y-auto">
+      <div className="px-5 pt-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-400">
+        Recent
+      </div>
+      <div className="flex-1 space-y-2 overflow-y-auto px-3 pb-4 pt-3">
         {chats.map((chat) => (
           <button
             key={chat.id}
             onClick={() => onSelectChat(chat.id)}
-            className={`w-full text-left px-4 py-3 hover:bg-neutral-100 transition-colors ${activeChat === chat.id ? 'bg-neutral-100' : ''}`}
+            className={`w-full rounded-[22px] border px-4 py-4 text-left transition-all ${
+              activeChat === chat.id
+                ? 'border-stone-300 bg-white shadow-[0_16px_40px_rgba(15,23,42,0.08)]'
+                : 'border-transparent bg-transparent hover:border-stone-200 hover:bg-white/70'
+            }`}
           >
-            <p className="truncate text-sm font-medium">{chat.title}</p>
-            <p className="text-xs text-neutral-400 mt-1">{chat.updatedAt.toLocaleDateString()}</p>
+            <p className="truncate text-sm font-semibold text-neutral-900">{chat.title}</p>
+            <p className="mt-2 text-xs text-neutral-400">{chat.updatedAt.toLocaleDateString()}</p>
           </button>
         ))}
       </div>

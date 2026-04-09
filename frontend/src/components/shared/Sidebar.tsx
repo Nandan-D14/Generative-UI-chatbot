@@ -12,7 +12,7 @@ export function Sidebar() {
   const location = useLocation();
 
   return (
-    <div className="w-56 bg-neutral-900 text-white flex flex-col min-h-screen">
+    <div className="w-56 bg-neutral-900 text-white flex flex-col min-h-screen transition-all duration-300 ease-in-out">
       <div className="p-5 border-b border-neutral-800">
         <h1 className="text-lg font-bold">VisualMind</h1>
       </div>

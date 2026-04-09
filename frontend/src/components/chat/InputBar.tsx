@@ -1,4 +1,4 @@
-import { useState, KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, KeyboardEvent } from 'react';
 
 type Props = {
   onSend: (message: string) => void;
@@ -7,6 +7,13 @@ type Props = {
 
 export function InputBar({ onSend, isLoading }: Props) {
   const [input, setInput] = useState('');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (!textareaRef.current) return;
+    textareaRef.current.style.height = '0px';
+    textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 220)}px`;
+  }, [input]);
 
   const handleSend = () => {
     if (!input.trim() || isLoading) return;
@@ -22,24 +29,30 @@ export function InputBar({ onSend, isLoading }: Props) {
   };
 
   return (
-    <div className="border-t border-neutral-200 bg-white p-4">
-      <div className="flex gap-3 max-w-4xl mx-auto">
+    <div className="border-t border-stone-200/80 bg-white/72 px-6 py-5 backdrop-blur-xl">
+      <div className="mx-auto max-w-4xl rounded-[28px] border border-white/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(246,242,235,0.88))] p-3 shadow-[0_24px_60px_rgba(15,23,42,0.08)]">
         <textarea
+          ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask anything..."
-          className="flex-1 resize-none border border-neutral-300 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="Ask for an answer, a layout, or an interactive visual..."
+          className="min-h-[72px] w-full resize-none bg-transparent px-4 py-3 text-[15px] leading-7 text-neutral-900 placeholder:text-neutral-400 focus:outline-none"
           rows={1}
           disabled={isLoading}
         />
-        <button
-          onClick={handleSend}
-          disabled={isLoading || !input.trim()}
-          className="px-6 py-3 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          {isLoading ? '...' : 'Send'}
-        </button>
+        <div className="mt-2 flex items-center justify-between gap-4 border-t border-stone-200/80 px-2 pt-3">
+          <p className="text-xs font-medium text-neutral-400">
+            Enter to send. Shift + Enter for a new line.
+          </p>
+          <button
+            onClick={handleSend}
+            disabled={isLoading || !input.trim()}
+            className="inline-flex min-w-[112px] items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#2563eb_0%,#1d4ed8_50%,#1e40af_100%)] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition-transform duration-150 hover:-translate-y-0.5 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isLoading ? 'Thinking...' : 'Send'}
+          </button>
+        </div>
       </div>
     </div>
   );

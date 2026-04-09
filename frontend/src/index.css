@@ -1,3 +1,205 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  color: #111827;
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.95), rgba(240, 234, 223, 0.92) 48%, rgba(232, 225, 214, 0.85) 100%);
+  font-family: "IBM Plex Sans", "Segoe UI", "Helvetica Neue", sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.95), rgba(240, 234, 223, 0.92) 48%, rgba(232, 225, 214, 0.85) 100%);
+}
+
+::selection {
+  background: rgba(37, 99, 235, 0.2);
+}
+
+.vm-markdown {
+  color: #1f2937;
+  font-size: 0.98rem;
+  line-height: 1.85;
+}
+
+.vm-markdown > * + * {
+  margin-top: 1rem;
+}
+
+.vm-markdown h1,
+.vm-markdown h2,
+.vm-markdown h3,
+.vm-markdown h4 {
+  margin: 0;
+  color: #0f172a;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+}
+
+.vm-markdown h1 {
+  font-size: 1.8rem;
+}
+
+.vm-markdown h2 {
+  font-size: 1.45rem;
+}
+
+.vm-markdown h3 {
+  font-size: 1.18rem;
+}
+
+.vm-markdown p,
+.vm-markdown li,
+.vm-markdown blockquote {
+  margin: 0;
+}
+
+.vm-markdown ul,
+.vm-markdown ol {
+  margin: 0;
+  padding-left: 1.35rem;
+}
+
+.vm-markdown li + li {
+  margin-top: 0.5rem;
+}
+
+.vm-markdown blockquote {
+  border-left: 3px solid rgba(148, 163, 184, 0.55);
+  padding-left: 1rem;
+  color: #475569;
+}
+
+.vm-markdown a {
+  color: #2563eb;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(37, 99, 235, 0.25);
+}
+
+.vm-markdown a:hover {
+  border-bottom-color: rgba(37, 99, 235, 0.7);
+}
+
+.vm-markdown strong {
+  color: #0f172a;
+  font-weight: 650;
+}
+
+.vm-markdown em {
+  font-style: italic;
+}
+
+.vm-markdown code {
+  border-radius: 0.55rem;
+  background: rgba(148, 163, 184, 0.12);
+  padding: 0.16rem 0.45rem;
+  font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  font-size: 0.92em;
+}
+
+.vm-markdown pre {
+  overflow-x: auto;
+  border-radius: 1.1rem;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 1rem 1.1rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.vm-markdown pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+.vm-markdown hr {
+  border: 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.vm-markdown .vm-table-wrap {
+  overflow-x: auto;
+  border-radius: 1.15rem;
+  border: 1px solid rgba(214, 211, 209, 0.85);
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.vm-markdown table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.vm-markdown th,
+.vm-markdown td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid rgba(231, 229, 228, 0.85);
+  vertical-align: top;
+}
+
+.vm-markdown th {
+  background: rgba(245, 245, 244, 0.92);
+  color: #57534e;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vm-markdown tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.vm-markdown--inverse {
+  color: rgba(239, 246, 255, 0.96);
+}
+
+.vm-markdown--inverse h1,
+.vm-markdown--inverse h2,
+.vm-markdown--inverse h3,
+.vm-markdown--inverse h4,
+.vm-markdown--inverse strong {
+  color: #ffffff;
+}
+
+.vm-markdown--inverse a {
+  color: #dbeafe;
+  border-bottom-color: rgba(219, 234, 254, 0.35);
+}
+
+.vm-markdown--inverse blockquote {
+  border-left-color: rgba(219, 234, 254, 0.4);
+  color: rgba(219, 234, 254, 0.9);
+}
+
+.vm-markdown--inverse code {
+  background: rgba(15, 23, 42, 0.22);
+  color: #eff6ff;
+}
+
+.vm-markdown--inverse .vm-table-wrap {
+  border-color: rgba(191, 219, 254, 0.18);
+  background: rgba(30, 41, 59, 0.18);
+}
+
+.vm-markdown--inverse th {
+  background: rgba(15, 23, 42, 0.22);
+  color: rgba(219, 234, 254, 0.82);
+}
+
+.vm-markdown--inverse td,
+.vm-markdown--inverse th {
+  border-bottom-color: rgba(191, 219, 254, 0.14);
+}

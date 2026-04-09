@@ -1,5 +1,6 @@
 import { VisualPanel } from './VisualPanel';
 import { ThinkingSteps } from './ThinkingSteps';
+import { MarkdownContent } from './MarkdownContent';
 import type { LLMResponse } from '../../../../shared/types';
 
 type ReActStep = {
@@ -20,29 +21,49 @@ type Props = {
 
 export function MessageBubble({ role, text, visualData, thinkingSteps, onSaveArtifact, timestamp }: Props) {
   const isUser = role === 'user';
+  const visualPayload =
+    visualData && visualData.renderType !== 'none' && visualData.code
+      ? {
+          code: visualData.code,
+          renderType: visualData.renderType as 'html' | 'react',
+          componentName: visualData.componentName
+        }
+      : null;
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-6`}>
-      <div className={`max-w-3xl ${isUser ? 'bg-blue-600 text-white' : 'bg-white text-neutral-900'} rounded-2xl px-5 py-3 shadow-sm`}>
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-8`}>
+      <article
+        className={`w-full max-w-4xl rounded-[28px] px-6 py-5 shadow-[0_18px_60px_rgba(15,23,42,0.08)] transition-shadow ${
+          isUser
+            ? 'max-w-2xl bg-[linear-gradient(135deg,#2563eb_0%,#1d4ed8_55%,#1e40af_100%)] text-white'
+            : 'border border-white/70 bg-white/88 text-neutral-900 backdrop-blur'
+        }`}
+      >
+        <div className={`mb-4 flex items-center justify-between gap-3 ${isUser ? 'text-blue-100' : 'text-neutral-500'}`}>
+          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em]">
+            <span className={`inline-flex h-2.5 w-2.5 rounded-full ${isUser ? 'bg-blue-200' : 'bg-emerald-500'}`} />
+            {isUser ? 'You' : 'VisualMind'}
+          </div>
+          <div className="text-xs">
+            {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        </div>
+
         {!isUser && thinkingSteps && thinkingSteps.length > 0 && (
           <ThinkingSteps steps={thinkingSteps} />
         )}
 
-        <p className="whitespace-pre-wrap leading-relaxed">{text}</p>
+        <MarkdownContent content={text} inverse={isUser} />
 
-        {visualData && visualData.renderType !== 'none' && visualData.code && (
+        {visualPayload ? (
           <VisualPanel
-            code={visualData.code}
-            renderType={visualData.renderType}
-            componentName={visualData.componentName}
+            code={visualPayload.code}
+            renderType={visualPayload.renderType}
+            componentName={visualPayload.componentName}
             onSaveArtifact={onSaveArtifact}
           />
-        )}
-
-        <div className={`mt-2 text-xs ${isUser ? 'text-blue-200' : 'text-neutral-400'}`}>
-          {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </div>
-      </div>
+        ) : null}
+      </article>
     </div>
   );
 }
