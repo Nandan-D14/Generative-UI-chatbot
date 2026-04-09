@@ -5,6 +5,7 @@ import { InputBar } from '../components/chat/InputBar';
 import { ChatSidebar } from '../components/chat/ChatSidebar';
 import { useStream, ReActStep } from '../hooks/useStream';
 import { fromUnixish } from '../lib/time';
+import { useSidebar } from '../contexts/SidebarContext';
 import type { LLMResponse } from '../../../shared/types';
 
 type Message = {
@@ -24,17 +25,42 @@ type Chat = {
 
 export function ChatPage() {
   const { getToken } = useAuth();
+  const { setSidebarSlot } = useSidebar();
   const [messages, setMessages] = useState<Message[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
-  const { isStreaming, thinkingSteps, startStream, reset } = useStream();
+  const { isStreaming, currentText, thinkingSteps, completeResponse, startStream, reset } = useStream();
+
+  const handleNewChat = useCallback(() => {
+    setActiveChat(null);
+    setMessages([]);
+    reset();
+  }, [reset]);
+
+  const handleSelectChat = useCallback((id: string) => {
+    setActiveChat(id);
+    reset();
+  }, [reset]);
 
   // Load chats on mount
   useEffect(() => {
     loadChats();
   }, []);
+
+  // Update sidebar slot with the chat list
+  useEffect(() => {
+    setSidebarSlot(
+      <ChatSidebar
+        chats={chats}
+        activeChat={activeChat}
+        onSelectChat={handleSelectChat}
+        onNewChat={handleNewChat}
+      />
+    );
+    return () => setSidebarSlot(null);
+  }, [chats, activeChat, handleSelectChat, handleNewChat, setSidebarSlot]);
 
   const loadChats = useCallback(async () => {
     const token = await getToken();
@@ -197,27 +223,25 @@ export function ChatPage() {
     }
   };
 
-  const handleNewChat = () => {
-    setActiveChat(null);
-    setMessages([]);
-    reset();
-  };
+  const pendingAssistantMessage: Message | null = isStreaming
+    ? {
+        id: '__pending__',
+        role: 'assistant',
+        text: currentText,
+        visualData: completeResponse ?? undefined,
+        thinkingSteps: [...thinkingSteps],
+        timestamp: new Date()
+      }
+    : null;
 
-  const handleSelectChat = (id: string) => {
-    setActiveChat(id);
-    reset();
-  };
+  const displayMessages = pendingAssistantMessage
+    ? [...messages, pendingAssistantMessage]
+    : messages;
 
   return (
-    <div className="flex h-full min-h-0 bg-[#ede7dc]">
-      <ChatSidebar
-        chats={chats}
-        activeChat={activeChat}
-        onSelectChat={handleSelectChat}
-        onNewChat={handleNewChat}
-      />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <ChatWindow messages={messages} errorMessage={apiError} />
+    <div className="flex h-full min-h-0 bg-neutral-50/50">
+      <div className="flex min-w-0 flex-1 flex-col h-full bg-white ml-2 mt-2 mr-2 rounded-tl-2xl rounded-tr-2xl border border-neutral-200/50 shadow-sm overflow-hidden">
+        <ChatWindow messages={displayMessages} errorMessage={apiError} />
         <InputBar onSend={handleSend} isLoading={isStreaming || isLoadingMessages} />
       </div>
     </div>

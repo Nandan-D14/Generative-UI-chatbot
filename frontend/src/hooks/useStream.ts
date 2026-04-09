@@ -62,6 +62,14 @@ export function useStream() {
             setThinkingSteps(prev => [...prev, parsed.step]);
           }
 
+          if (parsed.type === 'response-start') {
+            setCurrentText('');
+          }
+
+          if (parsed.type === 'text-delta' && typeof parsed.content === 'string') {
+            setCurrentText(prev => prev + parsed.content);
+          }
+
           if (parsed.type === 'response') {
             const llmResponse: LLMResponse = parseLLMResponsePayload(parsed.content);
             setCurrentText(llmResponse.text);

@@ -14,11 +14,16 @@ type AgentTool = {
   call(input: string): Promise<string>;
 };
 
+type AgentCallbacks = {
+  onStep?: (step: ReActStep) => Promise<void> | void;
+};
+
 export async function reactAgent(
   userMessage: string,
   chatHistory: ChatMessage[],
   userId: string,
-  env: Env
+  env: Env,
+  callbacks: AgentCallbacks = {}
 ): Promise<AgentResult> {
 
   const ragTool = new RAGTool(env.VECTORIZE, env, userId);
@@ -47,7 +52,7 @@ export async function reactAgent(
   ];
 
   const steps: ReActStep[] = [];
-  const maxIterations = 8;
+  const maxIterations = 3;
   let iteration = 0;
 
   while (iteration < maxIterations) {
@@ -76,6 +81,10 @@ export async function reactAgent(
       actionInput: toolCall.input,
       observation: observation.slice(0, 500)
     });
+
+    if (callbacks.onStep) {
+      await callbacks.onStep(steps[steps.length - 1]);
+    }
 
     messages.push(new AIMessage(content));
     messages.push(new ToolMessage({

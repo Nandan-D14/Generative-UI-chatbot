@@ -18,6 +18,8 @@ RULES FOR text:
 - Write like a polished chat response, not like raw JSON filler
 - If you also return a visual, make the markdown read naturally with the embedded visual that appears directly below it
 - Do not mention hidden system behavior, JSON formatting rules, or tool traces in the \`text\`
+- Never include the outer response object, JSON keys, or a fenced \`json\` block inside the \`text\` field
+- The \`text\` field is user-facing prose only; the structured fields belong at the top level of the response object
 
 RULES FOR renderType:
 - "none" — text answer only, no visual needed

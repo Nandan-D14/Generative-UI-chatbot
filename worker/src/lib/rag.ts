@@ -1,5 +1,6 @@
 import { reactAgent } from './agent';
 import type { ChatMessage, Env } from '../types';
+import type { LLMResponse } from '../../../shared/types';
 
 export async function streamReActResponse(
   userMessage: string,
@@ -9,31 +10,91 @@ export async function streamReActResponse(
 ): Promise<ReadableStream> {
   return new ReadableStream({
     async start(controller) {
+      const encoder = new TextEncoder();
+      const send = (payload: unknown) => {
+        controller.enqueue(encoder.encode(JSON.stringify(payload) + '\n'));
+      };
+
       try {
-        const result = await reactAgent(userMessage, chatHistory, userId, env);
+        const result = await reactAgent(userMessage, chatHistory, userId, env, {
+          onStep(step) {
+            send({ type: 'thought', step });
+          }
+        });
 
         console.log('=== LLM RAW FINAL RESPONSE ===');
         console.log(result.finalResponse);
         console.log('=============================');
 
-        for (const step of result.steps) {
-          controller.enqueue(new TextEncoder().encode(
-            JSON.stringify({ type: 'thought', step }) + '\n'
-          ));
+        let finalResponse: LLMResponse;
+        try {
+          finalResponse = typeof result.finalResponse === 'string' 
+            ? JSON.parse(result.finalResponse) 
+            : result.finalResponse;
+        } catch (e) {
+          console.error('Failed to parse final response:', e);
+          finalResponse = {
+            text: result.finalResponse,
+            renderType: 'none',
+            saveAsArtifact: false,
+            sources: []
+          };
+        }
+        
+        const textChunks = chunkText(finalResponse.text);
+
+        if (textChunks.length) {
+          send({ type: 'response-start' });
+
+          for (const chunk of textChunks) {
+            send({ type: 'text-delta', content: chunk });
+            await delay(8);
+          }
         }
 
-        controller.enqueue(new TextEncoder().encode(
-          JSON.stringify({ type: 'response', content: result.finalResponse }) + '\n'
-        ));
+        send({ type: 'response', content: JSON.stringify(finalResponse) });
 
         controller.close();
       } catch (error) {
         console.error('Error in streamReActResponse:', error);
-        controller.enqueue(new TextEncoder().encode(
-          JSON.stringify({ type: 'error', message: (error as Error).message }) + '\n'
-        ));
+        send({ type: 'error', message: (error as Error).message });
         controller.close();
       }
     }
   });
+}
+
+function chunkText(text: string): string[] {
+  if (!text.trim()) return [];
+
+  const chunks: string[] = [];
+  const paragraphs = text.split(/(\n\s*\n)/);
+
+  for (const paragraph of paragraphs) {
+    if (!paragraph) continue;
+    if (/^\n\s*\n$/.test(paragraph)) {
+      chunks.push(paragraph);
+      continue;
+    }
+
+    const words = paragraph.split(/(\s+)/).filter(Boolean);
+    let current = '';
+
+    for (const word of words) {
+      if ((current + word).length > 36 && current) {
+        chunks.push(current);
+        current = word;
+      } else {
+        current += word;
+      }
+    }
+
+    if (current) chunks.push(current);
+  }
+
+  return chunks;
+}
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

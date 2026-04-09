@@ -19,6 +19,7 @@ export function createChatModel(env: Env) {
     apiKey: env.LLM_API_KEY,
     model: env.LLM_CHAT_MODEL,
     temperature: 0.3,
+    maxTokens: 8064,
     configuration: { baseURL: env.LLM_BASE_URL }
   });
 }

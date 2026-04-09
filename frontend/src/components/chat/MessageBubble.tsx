@@ -35,6 +35,9 @@ export function MessageBubble({ role, text, visualData, thinkingSteps, onSaveArt
       <div className="flex w-full justify-end mb-6">
         <div className="max-w-[-webkit-fill-available] sm:max-w-[70%] rounded-3xl rounded-tr-lg bg-[#f4f4f4] px-5 py-3.5 text-neutral-900">
           <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">{text}</div>
+          <div className="mt-2 text-right text-[11px] text-neutral-400">
+            {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </div>
         </div>
       </div>
     );
@@ -49,7 +52,14 @@ export function MessageBubble({ role, text, visualData, thinkingSteps, onSaveArt
           </div>
         )}
 
-        <MarkdownContent content={text} inverse={false} />
+        {text.trim() ? (
+          <MarkdownContent content={text} inverse={false} />
+        ) : (
+          <div className="flex items-center gap-3 text-sm text-neutral-400">
+            <span className="inline-flex h-2.5 w-2.5 animate-pulse rounded-full bg-neutral-400" />
+            Working on it...
+          </div>
+        )}
 
         {visualPayload ? (
           <div className="mt-8 mb-4">
@@ -61,6 +71,10 @@ export function MessageBubble({ role, text, visualData, thinkingSteps, onSaveArt
             />
           </div>
         ) : null}
+
+        <div className="mt-4 text-[11px] text-neutral-400">
+          {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </div>
       </article>
     </div>
   );

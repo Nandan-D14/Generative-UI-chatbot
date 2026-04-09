@@ -20,7 +20,7 @@ index_name = "visualmind-kb"
 
 # Modal Research API — GLM-5.1
 LLM_BASE_URL = "https://api.us-west-2.modal.direct/v1"
-LLM_CHAT_MODEL = "zai-org/GLM-5.1"
+LLM_CHAT_MODEL = "zai-org/GLM-5.1-FP8"
 LLM_EMBED_MODEL = "zai-org/GLM-5.1"
 LLM_EMBED_DIMENSIONS = 2048
 FRONTEND_URL = "http://localhost:5173"

@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useSidebar } from '../../contexts/SidebarContext';
 
 const navItems = [
   { 
@@ -54,10 +55,11 @@ const bottomNavItems = [
 
 export function Sidebar() {
   const location = useLocation();
+  const { sidebarSlot } = useSidebar();
 
   return (
-    <div className="w-64 bg-neutral-950 text-neutral-300 flex flex-col min-h-screen border-r border-neutral-800 transition-all duration-300 ease-in-out">
-      <div className="h-16 flex items-center px-6 border-b border-neutral-800/60 mb-4">
+    <div className="w-64 bg-neutral-950 text-neutral-300 flex flex-col h-screen border-r border-neutral-800 transition-all duration-300 ease-in-out shrink-0">
+      <div className="h-16 flex items-center px-6 border-b border-neutral-800/60 mb-2 shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-neutral-800 flex items-center justify-center border border-neutral-700">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -68,8 +70,8 @@ export function Sidebar() {
         </div>
       </div>
       
-      <nav className="flex-1 px-4 space-y-1">
-        <div className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-3 px-2">Menu</div>
+      <nav className="px-4 space-y-1 shrink-0">
+        <div className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-2 px-2 mt-2">Menu</div>
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
@@ -91,7 +93,14 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="p-4 mt-auto border-t border-neutral-800/60">
+      {sidebarSlot && (
+        <div className="flex-1 min-h-0 flex flex-col mt-6 overflow-hidden">
+          {sidebarSlot}
+        </div>
+      )}
+      {!sidebarSlot && <div className="flex-1" />}
+
+      <div className="p-4 shrink-0 mt-auto border-t border-neutral-800/60">
         {bottomNavItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
@@ -115,9 +124,9 @@ export function Sidebar() {
         {/* User profile stub / optional */}
         <div className="mt-4 px-3 py-2 flex items-center gap-3 rounded-lg hover:bg-neutral-800/50 cursor-pointer transition-colors">
           <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex-shrink-0" />
-          <div className="flex flex-col">
-            <span className="text-sm font-medium text-white leading-tight">Admin User</span>
-            <span className="text-xs text-neutral-500 leading-tight">admin@visualmind.io</span>
+          <div className="flex flex-col overflow-hidden">
+            <span className="text-sm font-medium text-white leading-tight truncate">Admin User</span>
+            <span className="text-[11px] text-neutral-500 leading-tight truncate">admin@visualmind.io</span>
           </div>
         </div>
       </div>
