@@ -1,5 +1,6 @@
 import { VisualPanel } from './VisualPanel';
 import { ThinkingSteps } from './ThinkingSteps';
+import { MarkdownContent } from './MarkdownContent';
 import type { LLMResponse } from '../../../../shared/types';
 
 type ReActStep = {
@@ -20,29 +21,47 @@ type Props = {
 
 export function MessageBubble({ role, text, visualData, thinkingSteps, onSaveArtifact, timestamp }: Props) {
   const isUser = role === 'user';
+  const visualPayload =
+    visualData && visualData.renderType !== 'none' && visualData.code
+      ? {
+          code: visualData.code,
+          renderType: visualData.renderType as 'html' | 'react',
+          componentName: visualData.componentName
+        }
+      : null;
 
-  return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-6`}>
-      <div className={`max-w-3xl ${isUser ? 'bg-blue-600 text-white' : 'bg-white text-neutral-900'} rounded-2xl px-5 py-3 shadow-sm`}>
-        {!isUser && thinkingSteps && thinkingSteps.length > 0 && (
-          <ThinkingSteps steps={thinkingSteps} />
-        )}
-
-        <p className="whitespace-pre-wrap leading-relaxed">{text}</p>
-
-        {visualData && visualData.renderType !== 'none' && visualData.code && (
-          <VisualPanel
-            code={visualData.code}
-            renderType={visualData.renderType}
-            componentName={visualData.componentName}
-            onSaveArtifact={onSaveArtifact}
-          />
-        )}
-
-        <div className={`mt-2 text-xs ${isUser ? 'text-blue-200' : 'text-neutral-400'}`}>
-          {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+  if (isUser) {
+    return (
+      <div className="flex w-full justify-end mb-6">
+        <div className="max-w-[-webkit-fill-available] sm:max-w-[70%] rounded-3xl rounded-tr-lg bg-[#f4f4f4] px-5 py-3.5 text-neutral-900">
+          <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">{text}</div>
         </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="w-full mb-8 pt-2">
+      <article className="w-full max-w-full">
+        {thinkingSteps && thinkingSteps.length > 0 && (
+          <div className="mb-4">
+            <ThinkingSteps steps={thinkingSteps} />
+          </div>
+        )}
+
+        <MarkdownContent content={text} inverse={false} />
+
+        {visualPayload ? (
+          <div className="mt-8 mb-4">
+            <VisualPanel
+              code={visualPayload.code}
+              renderType={visualPayload.renderType}
+              componentName={visualPayload.componentName}
+              onSaveArtifact={onSaveArtifact}
+            />
+          </div>
+        ) : null}
+      </article>
     </div>
   );
 }

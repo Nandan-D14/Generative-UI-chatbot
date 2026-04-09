@@ -19,9 +19,10 @@ export async function saveComponent(
   propsSchema: object,
   db: D1Database
 ): Promise<void> {
+  const id = crypto.randomUUID();
   await db.prepare(
-    'INSERT INTO components (id, user_id, name, description, render_type, code, props_schema, use_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).bind(crypto.randomUUID(), userId, name, description, renderType, code, JSON.stringify(propsSchema), 0, Date.now(), Date.now()).run();
+    'INSERT INTO components (id, user_id, name, description, render_type, code, props_schema, use_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)'
+  ).bind(id, userId, name, description, renderType, code, JSON.stringify(propsSchema), Date.now(), Date.now()).run();
 }
 
 export async function getComponentCode(

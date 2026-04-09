@@ -12,8 +12,15 @@ binding = "VECTORIZE"
 index_name = "visualmind-kb"
 
 [vars]
-CLERK_SECRET_KEY = "sk_test_kb6yNP0iYp4JdVrUibe9c6LwIcCcrt3352CmsImnqY"
-LLM_API_KEY = "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"
-LLM_BASE_URL = "https://integrate.api.nvidia.com/v1"
-LLM_MODEL = "moonshotai/kimi-k2-thinking"
+# NVIDIA (commented out)
+# LLM_BASE_URL = "https://integrate.api.nvidia.com/v1"
+# LLM_CHAT_MODEL = "moonshotai/kimi-k2.5"
+# LLM_EMBED_MODEL = "nvidia/llama-3.2-nv-embedqa-1b-v1"
+# LLM_EMBED_DIMENSIONS = 2048
+
+# Modal Research API — GLM-5.1
+LLM_BASE_URL = "https://api.us-west-2.modal.direct/v1"
+LLM_CHAT_MODEL = "zai-org/GLM-5.1"
+LLM_EMBED_MODEL = "zai-org/GLM-5.1"
+LLM_EMBED_DIMENSIONS = 2048
 FRONTEND_URL = "http://localhost:5173"

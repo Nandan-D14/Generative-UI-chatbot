@@ -9,7 +9,7 @@ export class RegistryLookupTool {
 
   async call(query: string): Promise<string> {
     const components = await this.db.prepare(
-      'SELECT name, description, render_type, props_schema FROM components WHERE user_id = ? AND (name LIKE ? OR description LIKE ?) ORDER BY use_count DESC LIMIT 5'
+      'SELECT name, description, render_type, props_schema, code FROM components WHERE user_id = ? AND (name LIKE ? OR description LIKE ?) ORDER BY use_count DESC LIMIT 5'
     ).bind(this.userId, `%${query}%`, `%${query}%`).all();
 
     if (!components.results.length) {
@@ -17,16 +17,7 @@ export class RegistryLookupTool {
     }
 
     return components.results.map((c: any) =>
-      `Component: ${c.name}\nType: ${c.render_type}\nDescription: ${c.description}\nProps Schema: ${c.props_schema}`
+      `Component: ${c.name}\nType: ${c.render_type}\nDescription: ${c.description}\nProps Schema: ${c.props_schema}\nCode: ${c.code}`
     ).join('\n\n---\n\n');
-  }
-
-  async getComponentCode(componentName: string): Promise<string | null> {
-    const component = await this.db.prepare(
-      'SELECT code FROM components WHERE user_id = ? AND name = ?'
-    ).bind(this.userId, componentName).first();
-
-    if (!component) return null;
-    return (component as any).code;
   }
 }

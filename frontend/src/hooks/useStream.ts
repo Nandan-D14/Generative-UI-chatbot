@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { LLMResponse } from '../../../shared/types';
+import { parseLLMResponsePayload } from '../lib/response';
 
 export type ReActStep = {
   thought: string;
@@ -42,6 +43,7 @@ export function useStream() {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    let finalResponse: LLMResponse | null = null;
 
     while (true) {
       const { done, value } = await reader.read();
@@ -61,29 +63,24 @@ export function useStream() {
           }
 
           if (parsed.type === 'response') {
-            try {
-              const llmResponse: LLMResponse = JSON.parse(parsed.content);
-              setCurrentText(llmResponse.text);
-              setCompleteResponse(llmResponse);
-            } catch {
-              const textMatch = parsed.content.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-              const text = textMatch ? textMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : '';
-              setCurrentText(text);
-              setCompleteResponse({ text, renderType: 'none' });
-            }
+            const llmResponse: LLMResponse = parseLLMResponsePayload(parsed.content);
+            setCurrentText(llmResponse.text);
+            setCompleteResponse(llmResponse);
+            finalResponse = llmResponse;
           }
 
           if (parsed.type === 'error') {
             setCurrentText(`Error: ${parsed.message}`);
-            setCompleteResponse({ text: `Error: ${parsed.message}`, renderType: 'none' });
+            finalResponse = { text: `Error: ${parsed.message}`, renderType: 'none' };
+            setCompleteResponse(finalResponse);
           }
         } catch {}
       }
     }
 
     setIsStreaming(false);
-    return completeResponse;
-  }, [completeResponse]);
+    return finalResponse;
+  }, []);
 
   const reset = useCallback(() => {
     setIsStreaming(false);

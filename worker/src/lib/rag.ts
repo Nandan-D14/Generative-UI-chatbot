@@ -1,6 +1,5 @@
-import { reactAgent, ReActStep } from './agent';
-import type { ChatMessage } from './agent';
-import type { Env } from '../types';
+import { reactAgent } from './agent';
+import type { ChatMessage, Env } from '../types';
 
 export async function streamReActResponse(
   userMessage: string,
@@ -12,6 +11,10 @@ export async function streamReActResponse(
     async start(controller) {
       try {
         const result = await reactAgent(userMessage, chatHistory, userId, env);
+
+        console.log('=== LLM RAW FINAL RESPONSE ===');
+        console.log(result.finalResponse);
+        console.log('=============================');
 
         for (const step of result.steps) {
           controller.enqueue(new TextEncoder().encode(
@@ -25,6 +28,7 @@ export async function streamReActResponse(
 
         controller.close();
       } catch (error) {
+        console.error('Error in streamReActResponse:', error);
         controller.enqueue(new TextEncoder().encode(
           JSON.stringify({ type: 'error', message: (error as Error).message }) + '\n'
         ));

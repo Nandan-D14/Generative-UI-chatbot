@@ -8,8 +8,12 @@ export function RegistryPage() {
   const { components, isLoading, fetchComponents, deleteComponent } = useRegistry();
 
   useEffect(() => {
-    getToken().then(token => token && fetchComponents(token));
-  }, []);
+    getToken().then((token) => {
+      if (token) {
+        return fetchComponents(token);
+      }
+    });
+  }, [fetchComponents, getToken]);
 
   const handleDelete = async (name: string) => {
     const token = await getToken();

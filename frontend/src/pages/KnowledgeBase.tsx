@@ -9,8 +9,12 @@ export function KnowledgeBasePage() {
   const { documents, isUploading, isLoading, fetchDocuments, uploadDocument, deleteDocument } = useKnowledgeBase();
 
   useEffect(() => {
-    getToken().then(token => token && fetchDocuments(token));
-  }, []);
+    getToken().then((token) => {
+      if (token) {
+        return fetchDocuments(token);
+      }
+    });
+  }, [fetchDocuments, getToken]);
 
   const handleUpload = async (file: File) => {
     const token = await getToken();

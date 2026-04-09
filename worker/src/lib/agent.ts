@@ -1,11 +1,18 @@
-import { ChatOpenAI } from '@langchain/openai';
 import { SystemMessage, HumanMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
 import { SYSTEM_PROMPT, REACT_INSTRUCTIONS } from './prompt';
+import { createChatModel } from './llm';
 import { RAGTool } from './tools/ragTool';
 import { WebSearchTool } from './tools/webSearchTool';
 import { RegistryLookupTool } from './tools/registryLookupTool';
 import { ComponentGenTool } from './tools/componentGenTool';
+import { normalizeLLMResponse } from './response';
 import type { Env, ChatMessage, ReActStep, AgentResult } from '../types';
+
+type AgentTool = {
+  name: string;
+  description: string;
+  call(input: string): Promise<string>;
+};
 
 export async function reactAgent(
   userMessage: string,
@@ -14,21 +21,16 @@ export async function reactAgent(
   env: Env
 ): Promise<AgentResult> {
 
-  const ragTool = new RAGTool(env.VECTORIZE, env.LLM_API_KEY, env.LLM_BASE_URL, userId);
-  const webSearchTool = new WebSearchTool();
+  const ragTool = new RAGTool(env.VECTORIZE, env, userId);
   const registryTool = new RegistryLookupTool(env.DB, userId);
   const componentGenTool = new ComponentGenTool(env.DB, userId);
 
-  const tools = [ragTool, webSearchTool, registryTool, componentGenTool];
+  const tools: AgentTool[] = [ragTool, registryTool, componentGenTool];
+  if (env.SEARCH_API_KEY) {
+    tools.push(new WebSearchTool(env.SEARCH_API_KEY));
+  }
 
-  const llm = new ChatOpenAI({
-    openAIApiKey: env.LLM_API_KEY,
-    configuration: { baseURL: env.LLM_BASE_URL },
-    temperature: 1,
-    topP: 0.9,
-    maxTokens: 16384,
-    modelName: env.LLM_MODEL || 'moonshotai/kimi-k2-thinking'
-  });
+  const llm = createChatModel(env);
 
   const systemMsg = new SystemMessage(
     SYSTEM_PROMPT + '\n\n' + REACT_INSTRUCTIONS + '\n\n' +
@@ -57,7 +59,7 @@ export async function reactAgent(
     const toolCall = parseToolCall(content);
 
     if (!toolCall) {
-      return { steps, finalResponse: content };
+      return { steps, finalResponse: normalizeLLMResponse(content) };
     }
 
     const tool = tools.find(t => t.name === toolCall.name);
@@ -76,7 +78,10 @@ export async function reactAgent(
     });
 
     messages.push(new AIMessage(content));
-    messages.push(new ToolMessage(observation, { tool_call_id: '' }));
+    messages.push(new ToolMessage({
+      content: observation,
+      tool_call_id: toolCall.id || `${toolCall.name}-${iteration}`
+    }));
   }
 
   messages.push(new HumanMessage('You have used many tools. Now provide your final response in the required JSON format.'));
@@ -84,7 +89,7 @@ export async function reactAgent(
 
   return {
     steps,
-    finalResponse: finalResponse.content as string
+    finalResponse: normalizeLLMResponse(finalResponse.content as string)
   };
 }
 
