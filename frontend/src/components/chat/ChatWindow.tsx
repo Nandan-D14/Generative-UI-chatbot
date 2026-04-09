@@ -34,34 +34,38 @@ export function ChatWindow({ messages, errorMessage, onSaveArtifact }: Props) {
   return (
     <div
       ref={containerRef}
-      className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.95),rgba(244,240,232,0.92)_46%,rgba(236,231,221,0.82)_100%)] px-6 py-8"
+      className="flex-1 overflow-y-auto bg-white px-4 sm:px-6 py-6 md:py-10 scroll-smooth"
     >
-      <div className="mx-auto flex min-h-full w-full max-w-5xl flex-col">
+      <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col">
         {errorMessage ? (
-          <div className="mb-8 rounded-[24px] border border-red-200/80 bg-red-50/90 px-5 py-4 text-sm text-red-700 shadow-sm">
+          <div className="mb-8 rounded-2xl border border-red-200/80 bg-red-50/90 px-5 py-4 text-sm text-red-700 shadow-sm flex items-center gap-3">
+            <svg className="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
             {errorMessage}
           </div>
         ) : null}
         {!messages.length && !errorMessage ? (
-          <div className="flex flex-1 items-center justify-center">
-            <div className="w-full max-w-3xl rounded-[32px] border border-white/80 bg-white/78 px-8 py-10 text-center shadow-[0_30px_80px_rgba(15,23,42,0.08)] backdrop-blur">
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#111827_0%,#334155_100%)] text-lg font-semibold text-white shadow-lg">
-                VM
+          <div className="flex flex-1 items-center justify-center my-auto">
+            <div className="w-full max-w-2xl text-center fade-in">
+              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-neutral-900 border border-neutral-800 shadow-xl shadow-neutral-900/10">
+                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
               </div>
-              <h2 className="text-3xl font-semibold tracking-tight text-neutral-900">Ask for answers, layouts, or live visuals</h2>
-              <p className="mt-3 text-sm leading-7 text-neutral-500">
-                VisualMind now renders assistant replies as markdown-first chat content with inline visuals instead of detached widgets.
+              <h2 className="text-3xl font-semibold tracking-tight text-neutral-900 sm:text-4xl mb-2">How can I help you today?</h2>
+              <p className="mt-3 text-base leading-relaxed text-neutral-500 max-w-lg mx-auto">
+                VisualMind is your AI assistant. Ask questions, generate UI components, or visualize data interactively and live.
               </p>
-              <div className="mt-8 grid gap-3 text-left sm:grid-cols-3">
-                <PromptCard title="Research" prompt="Summarize India's population growth since 2000 in markdown with a short table." />
-                <PromptCard title="Visualize" prompt="Create a bar chart of India's population from 2000 to 2023 with a short insight section." />
-                <PromptCard title="Reuse" prompt="Turn this dataset into a compact executive dashboard with filters and key metrics." />
+              <div className="mt-10 grid gap-4 text-left sm:grid-cols-2">
+                <PromptCard title="Research & Summarize" prompt="Summarize India's population growth since 2000 into a markdown table." icon="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <PromptCard title="Data Visualization" prompt="Create a bar chart of product sales over the last 4 quarters." icon="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </div>
             </div>
           </div>
         ) : null}
         {messages.length ? (
-          <div className="space-y-1">
+          <div className="flex flex-col pb-20">
             {messages.map((msg) => (
               <MessageBubble
                 key={msg.id}
@@ -80,11 +84,18 @@ export function ChatWindow({ messages, errorMessage, onSaveArtifact }: Props) {
   );
 }
 
-function PromptCard({ title, prompt }: { title: string; prompt: string }) {
+function PromptCard({ title, prompt, icon }: { title: string; prompt: string, icon: string }) {
   return (
-    <div className="rounded-2xl border border-stone-200/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(247,243,235,0.9))] px-4 py-4 shadow-sm">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-400">{title}</p>
-      <p className="mt-3 text-sm leading-6 text-neutral-700">{prompt}</p>
+    <div className="group rounded-2xl border border-neutral-200 bg-white p-5 cursor-pointer hover:border-neutral-300 hover:shadow-md transition-all duration-200">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-8 h-8 rounded-lg bg-neutral-100 flex items-center justify-center text-neutral-600 group-hover:bg-neutral-900 group-hover:text-white transition-colors">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={icon} />
+          </svg>
+        </div>
+        <p className="text-sm font-semibold text-neutral-800">{title}</p>
+      </div>
+      <p className="text-sm leading-relaxed text-neutral-500 group-hover:text-neutral-700 transition-colors">{prompt}</p>
     </div>
   );
 }

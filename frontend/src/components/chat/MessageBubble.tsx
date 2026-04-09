@@ -30,38 +30,36 @@ export function MessageBubble({ role, text, visualData, thinkingSteps, onSaveArt
         }
       : null;
 
-  return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-8`}>
-      <article
-        className={`w-full max-w-4xl rounded-[28px] px-6 py-5 shadow-[0_18px_60px_rgba(15,23,42,0.08)] transition-shadow ${
-          isUser
-            ? 'max-w-2xl bg-[linear-gradient(135deg,#2563eb_0%,#1d4ed8_55%,#1e40af_100%)] text-white'
-            : 'border border-white/70 bg-white/88 text-neutral-900 backdrop-blur'
-        }`}
-      >
-        <div className={`mb-4 flex items-center justify-between gap-3 ${isUser ? 'text-blue-100' : 'text-neutral-500'}`}>
-          <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em]">
-            <span className={`inline-flex h-2.5 w-2.5 rounded-full ${isUser ? 'bg-blue-200' : 'bg-emerald-500'}`} />
-            {isUser ? 'You' : 'VisualMind'}
-          </div>
-          <div className="text-xs">
-            {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </div>
+  if (isUser) {
+    return (
+      <div className="flex w-full justify-end mb-6">
+        <div className="max-w-[-webkit-fill-available] sm:max-w-[70%] rounded-3xl rounded-tr-lg bg-[#f4f4f4] px-5 py-3.5 text-neutral-900">
+          <div className="text-[15px] leading-relaxed whitespace-pre-wrap break-words">{text}</div>
         </div>
+      </div>
+    );
+  }
 
-        {!isUser && thinkingSteps && thinkingSteps.length > 0 && (
-          <ThinkingSteps steps={thinkingSteps} />
+  return (
+    <div className="w-full mb-8 pt-2">
+      <article className="w-full max-w-full">
+        {thinkingSteps && thinkingSteps.length > 0 && (
+          <div className="mb-4">
+            <ThinkingSteps steps={thinkingSteps} />
+          </div>
         )}
 
-        <MarkdownContent content={text} inverse={isUser} />
+        <MarkdownContent content={text} inverse={false} />
 
         {visualPayload ? (
-          <VisualPanel
-            code={visualPayload.code}
-            renderType={visualPayload.renderType}
-            componentName={visualPayload.componentName}
-            onSaveArtifact={onSaveArtifact}
-          />
+          <div className="mt-8 mb-4">
+            <VisualPanel
+              code={visualPayload.code}
+              renderType={visualPayload.renderType}
+              componentName={visualPayload.componentName}
+              onSaveArtifact={onSaveArtifact}
+            />
+          </div>
         ) : null}
       </article>
     </div>

@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { SignedIn, SignedOut, SignIn } from '@clerk/clerk-react';
 import { SidebarProvider, useSidebar } from './contexts/SidebarContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { Sidebar } from './components/shared/Sidebar';
 import { TopBar } from './components/shared/TopBar';
 import { ChatPage } from './pages/Chat';
@@ -48,48 +49,50 @@ export default function App() {
   if (!publishableKey) return <SetupScreen />;
 
   return (
-    <SidebarProvider>
-      <Routes>
-        <Route path="/" element={<AuthLanding />} />
-        <Route path="/sign-in/*" element={<AuthLanding />} />
-        <Route path="/chat" element={
-          <SignedIn>
-            <AppLayout>
-              <ChatPage />
-            </AppLayout>
-          </SignedIn>
-        } />
-        <Route path="/kb" element={
-          <SignedIn>
-            <AppLayout>
-              <KnowledgeBasePage />
-            </AppLayout>
-          </SignedIn>
-        } />
-        <Route path="/artifacts" element={
-          <SignedIn>
-            <AppLayout>
-              <ArtifactsPage />
-            </AppLayout>
-          </SignedIn>
-        } />
-        <Route path="/registry" element={
-          <SignedIn>
-            <AppLayout>
-              <RegistryPage />
-            </AppLayout>
-          </SignedIn>
-        } />
-        <Route path="/settings" element={
-          <SignedIn>
-            <AppLayout>
-              <SettingsPage />
-            </AppLayout>
-          </SignedIn>
-        } />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </SidebarProvider>
+    <ThemeProvider>
+      <SidebarProvider>
+        <Routes>
+          <Route path="/" element={<AuthLanding />} />
+          <Route path="/sign-in/*" element={<AuthLanding />} />
+          <Route path="/chat" element={
+            <SignedIn>
+              <AppLayout>
+                <ChatPage />
+              </AppLayout>
+            </SignedIn>
+          } />
+          <Route path="/kb" element={
+            <SignedIn>
+              <AppLayout>
+                <KnowledgeBasePage />
+              </AppLayout>
+            </SignedIn>
+          } />
+          <Route path="/artifacts" element={
+            <SignedIn>
+              <AppLayout>
+                <ArtifactsPage />
+              </AppLayout>
+            </SignedIn>
+          } />
+          <Route path="/registry" element={
+            <SignedIn>
+              <AppLayout>
+                <RegistryPage />
+              </AppLayout>
+            </SignedIn>
+          } />
+          <Route path="/settings" element={
+            <SignedIn>
+              <AppLayout>
+                <SettingsPage />
+              </AppLayout>
+            </SignedIn>
+          } />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </SidebarProvider>
+    </ThemeProvider>
   );
 }
 
