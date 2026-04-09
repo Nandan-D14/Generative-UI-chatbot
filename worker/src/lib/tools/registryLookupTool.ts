@@ -4,7 +4,6 @@ export class RegistryLookupTool {
 
   constructor(
     private db: D1Database,
-    private r2: R2Bucket,
     private userId: string
   ) {}
 
@@ -24,11 +23,10 @@ export class RegistryLookupTool {
 
   async getComponentCode(componentName: string): Promise<string | null> {
     const component = await this.db.prepare(
-      'SELECT r2_key FROM components WHERE user_id = ? AND name = ?'
+      'SELECT code FROM components WHERE user_id = ? AND name = ?'
     ).bind(this.userId, componentName).first();
 
     if (!component) return null;
-    const obj = await this.r2.get((component as any).r2_key);
-    return obj?.text() ?? null;
+    return (component as any).code;
   }
 }

@@ -5,6 +5,7 @@ export class RAGTool {
   constructor(
     private vectorize: VectorizeIndex,
     private apiKey: string,
+    private baseUrl: string,
     private userId: string
   ) {}
 
@@ -23,13 +24,13 @@ export class RAGTool {
   }
 
   private async generateEmbedding(text: string): Promise<number[]> {
-    const response = await fetch('https://api.openai.com/v1/embeddings', {
+    const response = await fetch(`${this.baseUrl}/embeddings`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ input: text, model: 'text-embedding-ada-002' })
+      body: JSON.stringify({ input: text, model: 'nvidia/nv-embedqa-e5-v5' })
     });
     const data = await response.json();
     return data.data[0].embedding;

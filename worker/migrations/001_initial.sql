@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS documents (
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   size INTEGER NOT NULL,
-  r2_key TEXT NOT NULL,
+  content TEXT NOT NULL,
   chunk_count INTEGER DEFAULT 0,
   status TEXT DEFAULT 'processing' CHECK(status IN ('processing', 'indexed', 'failed')),
   created_at INTEGER NOT NULL
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS components (
   name TEXT NOT NULL UNIQUE,
   description TEXT,
   render_type TEXT NOT NULL CHECK(render_type IN ('html', 'react')),
-  r2_key TEXT NOT NULL,
+  code TEXT NOT NULL,
   props_schema TEXT,
   use_count INTEGER DEFAULT 0,
   created_at INTEGER NOT NULL,
@@ -63,7 +63,6 @@ CREATE TABLE IF NOT EXISTS artifacts (
   title TEXT NOT NULL,
   render_type TEXT NOT NULL,
   code TEXT NOT NULL,
-  thumbnail_r2_key TEXT,
   created_at INTEGER NOT NULL
 );
 

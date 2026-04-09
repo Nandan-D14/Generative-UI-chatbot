@@ -4,7 +4,6 @@ export class ComponentGenTool {
 
   constructor(
     private db: D1Database,
-    private r2: R2Bucket,
     private userId: string
   ) {}
 
@@ -13,14 +12,10 @@ export class ComponentGenTool {
   }
 
   async saveComponent(name: string, code: string, renderType: string, propsSchema: object): Promise<string> {
-    const id = crypto.randomUUID();
-    const r2Key = `components/${this.userId}/${id}.txt`;
-    await this.r2.put(r2Key, code);
-
     await this.db.prepare(
-      'INSERT INTO components (id, user_id, name, description, render_type, r2_key, props_schema, use_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).bind(id, this.userId, name, '', renderType, r2Key, JSON.stringify(propsSchema), 0, Date.now(), Date.now()).run();
+      'INSERT INTO components (id, user_id, name, description, render_type, code, props_schema, use_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).bind(crypto.randomUUID(), this.userId, name, '', renderType, code, JSON.stringify(propsSchema), 0, Date.now(), Date.now()).run();
 
-    return id;
+    return name;
   }
 }

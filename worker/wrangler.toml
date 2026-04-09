@@ -5,19 +5,15 @@ compatibility_date = "2024-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "visualmind"
-database_id = "YOUR_D1_ID"
+database_id = "3806928d-bb69-47a0-aacf-7fd5df308a2b"
 
 [[vectorize]]
 binding = "VECTORIZE"
 index_name = "visualmind-kb"
 
-[[r2_buckets]]
-binding = "R2"
-bucket_name = "visualmind-storage"
-
 [vars]
 CLERK_SECRET_KEY = "sk_test_kb6yNP0iYp4JdVrUibe9c6LwIcCcrt3352CmsImnqY"
-LLM_API_KEY = ""
-LLM_BASE_URL = "https://api.openai.com/v1"
+LLM_API_KEY = "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"
+LLM_BASE_URL = "https://integrate.api.nvidia.com/v1"
+LLM_MODEL = "moonshotai/kimi-k2-thinking"
 FRONTEND_URL = "http://localhost:5173"
-SEARCH_API_KEY = ""

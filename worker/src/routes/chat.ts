@@ -27,7 +27,7 @@ export function chatRoutes(app: Hono<{ Bindings: Env }>) {
 
     await saveComponent(
       userId, body.name, body.description, body.renderType,
-      body.code, body.propsSchema, c.env.DB, c.env.R2
+      body.code, body.propsSchema, c.env.DB
     );
 
     return c.json({ success: true });

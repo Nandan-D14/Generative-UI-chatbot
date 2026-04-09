@@ -12,16 +12,14 @@ export function kbRoutes(app: Hono<{ Bindings: Env }>) {
     if (!file) return c.json({ error: 'No file provided' }, 400);
 
     const id = crypto.randomUUID();
-    const r2Key = `documents/${userId}/${id}`;
-
-    await c.env.R2.put(r2Key, file);
+    const content = await file.text();
 
     await c.env.DB.prepare(
-      'INSERT INTO documents (id, user_id, name, type, size, r2_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).bind(id, userId, file.name, file.type, file.size, r2Key, Date.now()).run();
+      'INSERT INTO documents (id, user_id, name, type, size, content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).bind(id, userId, file.name, file.type, file.size, content, Date.now()).run();
 
     try {
-      await processDocument(id, r2Key, userId, c.env);
+      await processDocument(id, content, userId, c.env);
     } catch {
       await c.env.DB.prepare('UPDATE documents SET status = ? WHERE id = ?').bind('failed', id).run();
       return c.json({ error: 'Processing failed', id, status: 'failed' }, 500);
@@ -33,7 +31,7 @@ export function kbRoutes(app: Hono<{ Bindings: Env }>) {
   router.get('/documents', async (c) => {
     const userId = c.get('userId') as string;
     const docs = await c.env.DB.prepare(
-      'SELECT * FROM documents WHERE user_id = ? ORDER BY created_at DESC'
+      'SELECT id, name, type, size, chunk_count, status, created_at FROM documents WHERE user_id = ? ORDER BY created_at DESC'
     ).bind(userId).all();
 
     return c.json(docs.results);
@@ -44,12 +42,11 @@ export function kbRoutes(app: Hono<{ Bindings: Env }>) {
     const docId = c.req.param('id');
 
     const doc = await c.env.DB.prepare(
-      'SELECT * FROM documents WHERE id = ? AND user_id = ?'
+      'SELECT id FROM documents WHERE id = ? AND user_id = ?'
     ).bind(docId, userId).first();
 
     if (!doc) return c.json({ error: 'Not found' }, 404);
 
-    await c.env.R2.delete((doc as any).r2_key);
     await c.env.DB.prepare('DELETE FROM documents WHERE id = ?').bind(docId).run();
 
     return c.json({ success: true });
@@ -58,11 +55,7 @@ export function kbRoutes(app: Hono<{ Bindings: Env }>) {
   app.route('/api/kb', router);
 }
 
-async function processDocument(docId: string, r2Key: string, userId: string, env: Env) {
-  const file = await env.R2.get(r2Key);
-  const content = await file?.text();
-  if (!content) throw new Error('File content empty');
-
+async function processDocument(docId: string, content: string, userId: string, env: Env) {
   const chunks = chunkText(content, 512, 50);
   const embeddings = await generateEmbeddings(chunks, env);
   const vectors = embeddings.map((vec, i) => ({
@@ -89,13 +82,13 @@ function chunkText(text: string, chunkSize: number, overlap: number): string[] {
 }
 
 async function generateEmbeddings(chunks: string[], env: Env): Promise<number[][]> {
-  const response = await fetch('https://api.openai.com/v1/embeddings', {
+  const response = await fetch(`${env.LLM_BASE_URL}/embeddings`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${env.LLM_API_KEY}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ input: chunks, model: 'text-embedding-ada-002' })
+    body: JSON.stringify({ input: chunks, model: 'nvidia/nv-embedqa-e5-v5' })
   });
   const data = await response.json();
   return data.data.map((d: any) => d.embedding);

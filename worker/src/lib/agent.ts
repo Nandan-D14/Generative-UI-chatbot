@@ -14,18 +14,20 @@ export async function reactAgent(
   env: Env
 ): Promise<AgentResult> {
 
-  const ragTool = new RAGTool(env.VECTORIZE, env.LLM_API_KEY, userId);
-  const webSearchTool = new WebSearchTool(env.SEARCH_API_KEY);
-  const registryTool = new RegistryLookupTool(env.DB, env.R2, userId);
-  const componentGenTool = new ComponentGenTool(env.DB, env.R2, userId);
+  const ragTool = new RAGTool(env.VECTORIZE, env.LLM_API_KEY, env.LLM_BASE_URL, userId);
+  const webSearchTool = new WebSearchTool();
+  const registryTool = new RegistryLookupTool(env.DB, userId);
+  const componentGenTool = new ComponentGenTool(env.DB, userId);
 
   const tools = [ragTool, webSearchTool, registryTool, componentGenTool];
 
   const llm = new ChatOpenAI({
     openAIApiKey: env.LLM_API_KEY,
     configuration: { baseURL: env.LLM_BASE_URL },
-    temperature: 0.3,
-    modelName: 'gpt-4o'
+    temperature: 1,
+    topP: 0.9,
+    maxTokens: 16384,
+    modelName: env.LLM_MODEL || 'moonshotai/kimi-k2-thinking'
   });
 
   const systemMsg = new SystemMessage(
