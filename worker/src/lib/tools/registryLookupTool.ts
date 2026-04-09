@@ -4,13 +4,12 @@ export class RegistryLookupTool {
 
   constructor(
     private db: D1Database,
-    private r2: R2Bucket,
     private userId: string
   ) {}
 
   async call(query: string): Promise<string> {
     const components = await this.db.prepare(
-      'SELECT name, description, render_type, props_schema FROM components WHERE user_id = ? AND (name LIKE ? OR description LIKE ?) ORDER BY use_count DESC LIMIT 5'
+      'SELECT name, description, render_type, props_schema, code FROM components WHERE user_id = ? AND (name LIKE ? OR description LIKE ?) ORDER BY use_count DESC LIMIT 5'
     ).bind(this.userId, `%${query}%`, `%${query}%`).all();
 
     if (!components.results.length) {
@@ -18,17 +17,7 @@ export class RegistryLookupTool {
     }
 
     return components.results.map((c: any) =>
-      `Component: ${c.name}\nType: ${c.render_type}\nDescription: ${c.description}\nProps Schema: ${c.props_schema}`
+      `Component: ${c.name}\nType: ${c.render_type}\nDescription: ${c.description}\nProps Schema: ${c.props_schema}\nCode: ${c.code}`
     ).join('\n\n---\n\n');
-  }
-
-  async getComponentCode(componentName: string): Promise<string | null> {
-    const component = await this.db.prepare(
-      'SELECT r2_key FROM components WHERE user_id = ? AND name = ?'
-    ).bind(this.userId, componentName).first();
-
-    if (!component) return null;
-    const obj = await this.r2.get((component as any).r2_key);
-    return obj?.text() ?? null;
   }
 }

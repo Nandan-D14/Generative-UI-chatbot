@@ -5,15 +5,11 @@ compatibility_date = "2024-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "visualmind"
-database_id = "YOUR_D1_ID"
+database_id = "3806928d-bb69-47a0-aacf-7fd5df308a2b"
 
 [[vectorize]]
 binding = "VECTORIZE"
 index_name = "visualmind-kb"
-
-[[r2_buckets]]
-binding = "R2"
-bucket_name = "visualmind-storage"
 
 [vars]
 LLM_BASE_URL = "https://integrate.api.nvidia.com/v1"

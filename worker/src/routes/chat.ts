@@ -27,32 +27,42 @@ export function chatRoutes(app: Hono<AppEnv>) {
 
     await saveComponent(
       userId, body.name, body.description, body.renderType,
-      body.code, body.propsSchema, c.env.DB, c.env.R2
+      body.code, body.propsSchema, c.env.DB
     );
 
     return c.json({ success: true });
   });
 
   router.post('/new', async (c) => {
-    const userId = c.get('userId') as string;
-    const { title } = await c.req.json();
-    const id = crypto.randomUUID();
-    const now = Date.now();
+    try {
+      const userId = c.get('userId') as string;
+      const { title } = await c.req.json();
+      const id = crypto.randomUUID();
+      const now = Date.now();
 
-    await c.env.DB.prepare(
-      'INSERT INTO chats (id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-    ).bind(id, userId, title || 'New Chat', now, now).run();
+      await c.env.DB.prepare(
+        'INSERT INTO chats (id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+      ).bind(id, userId, title || 'New Chat', now, now).run();
 
-    return c.json({ id });
+      return c.json({ id });
+    } catch (error) {
+      console.error('Error creating chat:', error);
+      return c.json({ error: (error as Error).message }, 500);
+    }
   });
 
   router.get('/list', async (c) => {
-    const userId = c.get('userId') as string;
-    const chats = await c.env.DB.prepare(
-      'SELECT * FROM chats WHERE user_id = ? ORDER BY updated_at DESC'
-    ).bind(userId).all();
+    try {
+      const userId = c.get('userId') as string;
+      const chats = await c.env.DB.prepare(
+        'SELECT * FROM chats WHERE user_id = ? ORDER BY updated_at DESC'
+      ).bind(userId).all();
 
-    return c.json(chats.results);
+      return c.json(chats.results);
+    } catch (error) {
+      console.error('Error loading chats:', error);
+      return c.json({ error: (error as Error).message }, 500);
+    }
   });
 
   router.post('/save-message', async (c) => {
@@ -85,20 +95,25 @@ export function chatRoutes(app: Hono<AppEnv>) {
   });
 
   router.get('/:id/messages', async (c) => {
-    const userId = c.get('userId') as string;
-    const chatId = c.req.param('id');
+    try {
+      const userId = c.get('userId') as string;
+      const chatId = c.req.param('id');
 
-    const chat = await c.env.DB.prepare(
-      'SELECT id FROM chats WHERE id = ? AND user_id = ?'
-    ).bind(chatId, userId).first();
+      const chat = await c.env.DB.prepare(
+        'SELECT id FROM chats WHERE id = ? AND user_id = ?'
+      ).bind(chatId, userId).first();
 
-    if (!chat) return c.json({ error: 'Not found' }, 404);
+      if (!chat) return c.json({ error: 'Not found' }, 404);
 
-    const messages = await c.env.DB.prepare(
-      'SELECT * FROM messages WHERE chat_id = ? ORDER BY created_at ASC'
-    ).bind(chatId).all();
+      const messages = await c.env.DB.prepare(
+        'SELECT * FROM messages WHERE chat_id = ? ORDER BY created_at ASC'
+      ).bind(chatId).all();
 
-    return c.json(messages.results);
+      return c.json(messages.results);
+    } catch (error) {
+      console.error('Error loading chat messages:', error);
+      return c.json({ error: (error as Error).message }, 500);
+    }
   });
 
   app.route('/api/chat', router);

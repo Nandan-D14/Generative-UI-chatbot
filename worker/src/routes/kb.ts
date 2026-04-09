@@ -15,18 +15,16 @@ export function kbRoutes(app: Hono<AppEnv>) {
     }
 
     const file = fileEntry as File;
+    const content = await file.text();
 
     const id = crypto.randomUUID();
-    const r2Key = `documents/${userId}/${id}`;
-
-    await c.env.R2.put(r2Key, file);
 
     await c.env.DB.prepare(
-      'INSERT INTO documents (id, user_id, name, type, size, r2_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
-    ).bind(id, userId, file.name, file.type, file.size, r2Key, Date.now()).run();
+      'INSERT INTO documents (id, user_id, name, type, size, content, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).bind(id, userId, file.name, file.type, file.size, content, Date.now()).run();
 
     try {
-      await processDocument(id, r2Key, userId, file.name, c.env);
+      await processDocument(id, userId, file.name, content, c.env);
     } catch {
       await c.env.DB.prepare('UPDATE documents SET status = ? WHERE id = ?').bind('failed', id).run();
       return c.json({ error: 'Processing failed', id, status: 'failed' }, 500);
@@ -54,7 +52,6 @@ export function kbRoutes(app: Hono<AppEnv>) {
 
     if (!doc) return c.json({ error: 'Not found' }, 404);
 
-    await c.env.R2.delete((doc as any).r2_key);
     await c.env.DB.prepare('DELETE FROM documents WHERE id = ?').bind(docId).run();
 
     return c.json({ success: true });
@@ -63,9 +60,7 @@ export function kbRoutes(app: Hono<AppEnv>) {
   app.route('/api/kb', router);
 }
 
-async function processDocument(docId: string, r2Key: string, userId: string, docName: string, env: Env) {
-  const file = await env.R2.get(r2Key);
-  const content = await file?.text();
+async function processDocument(docId: string, userId: string, docName: string, content: string, env: Env) {
   if (!content) throw new Error('File content empty');
 
   const chunks = chunkText(content, 512, 50);

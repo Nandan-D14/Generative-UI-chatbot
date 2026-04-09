@@ -17,31 +17,26 @@ export async function saveComponent(
   renderType: string,
   code: string,
   propsSchema: object,
-  db: D1Database,
-  r2: R2Bucket
+  db: D1Database
 ): Promise<void> {
   const id = crypto.randomUUID();
-  const r2Key = `components/${userId}/${id}.txt`;
-  await r2.put(r2Key, code);
   await db.prepare(
-    'INSERT INTO components (id, user_id, name, description, render_type, r2_key, props_schema, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
-  ).bind(id, userId, name, description, renderType, r2Key, JSON.stringify(propsSchema), Date.now(), Date.now()).run();
+    'INSERT INTO components (id, user_id, name, description, render_type, code, props_schema, use_count, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?)'
+  ).bind(id, userId, name, description, renderType, code, JSON.stringify(propsSchema), Date.now(), Date.now()).run();
 }
 
 export async function getComponentCode(
   db: D1Database,
-  r2: R2Bucket,
   userId: string,
   componentName: string
 ): Promise<{ code: string | null; renderType: string | null }> {
   const component = await db.prepare(
-    'SELECT r2_key, render_type FROM components WHERE user_id = ? AND name = ?'
+    'SELECT code, render_type FROM components WHERE user_id = ? AND name = ?'
   ).bind(userId, componentName).first();
 
   if (!component) return { code: null, renderType: null };
 
-  const obj = await r2.get((component as any).r2_key);
-  return { code: await obj?.text() ?? null, renderType: (component as any).render_type };
+  return { code: (component as any).code, renderType: (component as any).render_type };
 }
 
 export async function incrementComponentUseCount(
@@ -57,19 +52,11 @@ export async function incrementComponentUseCount(
 export async function deleteComponent(
   userId: string,
   componentName: string,
-  db: D1Database,
-  r2: R2Bucket
+  db: D1Database
 ): Promise<boolean> {
-  const component = await db.prepare(
-    'SELECT r2_key FROM components WHERE user_id = ? AND name = ?'
-  ).bind(userId, componentName).first();
-
-  if (!component) return false;
-
-  await r2.delete((component as any).r2_key);
-  await db.prepare(
+  const result = await db.prepare(
     'DELETE FROM components WHERE user_id = ? AND name = ?'
   ).bind(userId, componentName).run();
 
-  return true;
+  return (result as any).changes > 0;
 }

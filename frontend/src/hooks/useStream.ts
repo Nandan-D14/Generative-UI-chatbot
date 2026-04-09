@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { LLMResponse } from '../../../shared/types';
+import { parseLLMResponsePayload } from '../lib/response';
 
 export type ReActStep = {
   thought: string;
@@ -62,18 +63,10 @@ export function useStream() {
           }
 
           if (parsed.type === 'response') {
-            try {
-              const llmResponse: LLMResponse = JSON.parse(parsed.content);
-              setCurrentText(llmResponse.text);
-              setCompleteResponse(llmResponse);
-              finalResponse = llmResponse;
-            } catch {
-              const textMatch = parsed.content.match(/"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-              const text = textMatch ? textMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"') : '';
-              setCurrentText(text);
-              finalResponse = { text, renderType: 'none' };
-              setCompleteResponse(finalResponse);
-            }
+            const llmResponse: LLMResponse = parseLLMResponsePayload(parsed.content);
+            setCurrentText(llmResponse.text);
+            setCompleteResponse(llmResponse);
+            finalResponse = llmResponse;
           }
 
           if (parsed.type === 'error') {

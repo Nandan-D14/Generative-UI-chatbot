@@ -12,6 +12,10 @@ export async function streamReActResponse(
       try {
         const result = await reactAgent(userMessage, chatHistory, userId, env);
 
+        console.log('=== LLM RAW FINAL RESPONSE ===');
+        console.log(result.finalResponse);
+        console.log('=============================');
+
         for (const step of result.steps) {
           controller.enqueue(new TextEncoder().encode(
             JSON.stringify({ type: 'thought', step }) + '\n'
@@ -24,6 +28,7 @@ export async function streamReActResponse(
 
         controller.close();
       } catch (error) {
+        console.error('Error in streamReActResponse:', error);
         controller.enqueue(new TextEncoder().encode(
           JSON.stringify({ type: 'error', message: (error as Error).message }) + '\n'
         ));

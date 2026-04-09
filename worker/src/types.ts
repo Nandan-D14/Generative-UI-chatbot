@@ -1,7 +1,6 @@
 export interface Env {
   DB: D1Database;
   VECTORIZE: VectorizeIndex;
-  R2: R2Bucket;
   CLERK_SECRET_KEY: string;
   CLERK_WEBHOOK_SECRET?: string;
   LLM_API_KEY: string;

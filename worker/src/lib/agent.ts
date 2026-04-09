@@ -5,6 +5,7 @@ import { RAGTool } from './tools/ragTool';
 import { WebSearchTool } from './tools/webSearchTool';
 import { RegistryLookupTool } from './tools/registryLookupTool';
 import { ComponentGenTool } from './tools/componentGenTool';
+import { normalizeLLMResponse } from './response';
 import type { Env, ChatMessage, ReActStep, AgentResult } from '../types';
 
 type AgentTool = {
@@ -21,8 +22,8 @@ export async function reactAgent(
 ): Promise<AgentResult> {
 
   const ragTool = new RAGTool(env.VECTORIZE, env, userId);
-  const registryTool = new RegistryLookupTool(env.DB, env.R2, userId);
-  const componentGenTool = new ComponentGenTool(env.DB, env.R2, userId);
+  const registryTool = new RegistryLookupTool(env.DB, userId);
+  const componentGenTool = new ComponentGenTool(env.DB, userId);
 
   const tools: AgentTool[] = [ragTool, registryTool, componentGenTool];
   if (env.SEARCH_API_KEY) {
@@ -58,7 +59,7 @@ export async function reactAgent(
     const toolCall = parseToolCall(content);
 
     if (!toolCall) {
-      return { steps, finalResponse: content };
+      return { steps, finalResponse: normalizeLLMResponse(content) };
     }
 
     const tool = tools.find(t => t.name === toolCall.name);
@@ -88,7 +89,7 @@ export async function reactAgent(
 
   return {
     steps,
-    finalResponse: finalResponse.content as string
+    finalResponse: normalizeLLMResponse(finalResponse.content as string)
   };
 }
 

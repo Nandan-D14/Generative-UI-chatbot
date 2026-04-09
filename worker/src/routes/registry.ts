@@ -19,22 +19,19 @@ export function registryRoutes(app: Hono<AppEnv>) {
     const name = c.req.param('name');
 
     const component = await c.env.DB.prepare(
-      'SELECT r2_key, render_type FROM components WHERE user_id = ? AND name = ?'
+      'SELECT code, render_type FROM components WHERE user_id = ? AND name = ?'
     ).bind(userId, name).first();
 
     if (!component) return c.json({ error: 'Not found' }, 404);
 
-    const obj = await c.env.R2.get((component as any).r2_key);
-    const code = await obj?.text();
-
-    return c.json({ code, renderType: (component as any).render_type });
+    return c.json({ code: (component as any).code, renderType: (component as any).render_type });
   });
 
   router.delete('/:name', async (c) => {
     const userId = c.get('userId') as string;
     const name = c.req.param('name');
 
-    const deleted = await deleteComponent(userId, name, c.env.DB, c.env.R2);
+    const deleted = await deleteComponent(userId, name, c.env.DB);
     if (!deleted) return c.json({ error: 'Not found' }, 404);
     return c.json({ success: true });
   });
