@@ -1,3 +1,6 @@
+export type { ReActStep } from '../../shared/types';
+import type { ReActStep } from '../../shared/types';
+
 export interface Env {
   DB: D1Database;
   VECTORIZE: VectorizeIndex;
@@ -20,13 +23,6 @@ export interface AppVariables {
 export interface AppEnv {
   Bindings: Env;
   Variables: AppVariables;
-}
-
-export interface ReActStep {
-  thought: string;
-  action: string;
-  actionInput: string;
-  observation: string;
 }
 
 export interface AgentResult {

@@ -1,13 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { MessageBubble } from './MessageBubble';
-import type { LLMResponse } from '../../../../shared/types';
-
-type ReActStep = {
-  thought: string;
-  action: string;
-  actionInput: string;
-  observation: string;
-};
+import type { LLMResponse, ReActStep } from '../../../../shared/types';
 
 type Message = {
   id: string;

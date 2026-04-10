@@ -22,6 +22,7 @@ const schemaStatements = [
     component_name TEXT,
     component_props TEXT,
     code TEXT,
+    thinking_steps TEXT,
     created_at INTEGER NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS documents (
@@ -69,7 +70,8 @@ const columnMigrations: Record<string, Record<string, string>> = {
     render_type: `ALTER TABLE messages ADD COLUMN render_type TEXT CHECK(render_type IN ('none', 'html', 'react'))`,
     component_name: `ALTER TABLE messages ADD COLUMN component_name TEXT`,
     component_props: `ALTER TABLE messages ADD COLUMN component_props TEXT`,
-    code: `ALTER TABLE messages ADD COLUMN code TEXT`
+    code: `ALTER TABLE messages ADD COLUMN code TEXT`,
+    thinking_steps: `ALTER TABLE messages ADD COLUMN thinking_steps TEXT`
   },
   documents: {
     content: `ALTER TABLE documents ADD COLUMN content TEXT`

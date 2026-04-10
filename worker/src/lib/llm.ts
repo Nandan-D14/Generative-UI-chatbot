@@ -1,7 +1,7 @@
 import { ChatOpenAI } from '@langchain/openai';
 import type { Env } from '../types';
 
-type EmbeddingInputType = 'query' | 'document';
+type EmbeddingInputType = 'query' | 'passage';
 
 type EmbeddingRecord = {
   embedding: number[];
@@ -19,7 +19,7 @@ export function createChatModel(env: Env) {
     apiKey: env.LLM_API_KEY,
     model: env.LLM_CHAT_MODEL,
     temperature: 0.3,
-    maxTokens: 8064,
+    maxTokens: 16384,
     configuration: { baseURL: env.LLM_BASE_URL }
   });
 }
@@ -47,7 +47,9 @@ export async function generateEmbeddings(
     body: JSON.stringify({
       input,
       model: env.LLM_EMBED_MODEL,
-      encoding_format: 'float'
+      input_type: inputType,
+      encoding_format: 'float',
+      truncate: 'END'
     })
   });
 

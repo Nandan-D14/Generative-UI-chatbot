@@ -16,6 +16,15 @@ export type LLMResponse = {
   }>;
 }
 
+export type ReActStep = {
+  id: string;
+  thought: string;
+  action: string;
+  actionInput: string;
+  observation?: string;
+  status: 'running' | 'completed' | 'error';
+};
+
 export interface User {
   id: string;
   email: string;
@@ -39,6 +48,7 @@ export interface Message {
   component_name: string | null;
   component_props: string | null;
   code: string | null;
+  thinking_steps: string | null;
   created_at: number;
 }
 
