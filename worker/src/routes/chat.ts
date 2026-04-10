@@ -122,5 +122,28 @@ export function chatRoutes(app: Hono<AppEnv>) {
     }
   });
 
+  router.delete('/:id', async (c) => {
+    try {
+      const userId = c.get('userId') as string;
+      const chatId = c.req.param('id');
+
+      // Ensure the chat belongs to the user
+      const chat = await c.env.DB.prepare(
+        'SELECT id FROM chats WHERE id = ? AND user_id = ?'
+      ).bind(chatId, userId).first();
+
+      if (!chat) return c.json({ error: 'Not found or permission denied' }, 404);
+
+      // Delete messages first due to foreign key constraints, or just delete chat and let CASCADE handle it, if set.
+      await c.env.DB.prepare('DELETE FROM messages WHERE chat_id = ?').bind(chatId).run();
+      await c.env.DB.prepare('DELETE FROM chats WHERE id = ?').bind(chatId).run();
+
+      return c.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+      return c.json({ error: (error as Error).message }, 500);
+    }
+  });
+
   app.route('/api/chat', router);
 }

@@ -24,7 +24,7 @@ type AgentOptions = {
   useWebSearch?: boolean;
 };
 
-const MIN_RESPONSE_TEXT_LENGTH = 700;
+const MIN_RESPONSE_TEXT_LENGTH = 10;
 
 export async function reactAgent(
   userMessage: string,

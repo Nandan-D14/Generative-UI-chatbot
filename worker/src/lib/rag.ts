@@ -37,17 +37,24 @@ export async function streamReActResponse(
           finalResponse = typeof result.finalResponse === 'string' 
             ? JSON.parse(result.finalResponse) 
             : result.finalResponse;
+            
+          if (!finalResponse || typeof finalResponse !== 'object') {
+            throw new Error('Parsed response is not an object');
+          }
+          if (typeof finalResponse.text !== 'string') {
+            finalResponse.text = '';
+          }
         } catch (e) {
           console.error('Failed to parse final response:', e);
           finalResponse = {
-            text: result.finalResponse,
+            text: typeof result.finalResponse === 'string' ? result.finalResponse : '',
             renderType: 'none',
             saveAsArtifact: false,
             sources: []
           };
         }
         
-        const textChunks = chunkText(finalResponse.text);
+        const textChunks = chunkText(finalResponse.text || '');
 
         if (textChunks.length) {
           send({ type: 'response-start' });
@@ -71,7 +78,7 @@ export async function streamReActResponse(
 }
 
 function chunkText(text: string): string[] {
-  if (!text.trim()) return [];
+  if (typeof text !== 'string' || !text.trim()) return [];
 
   const chunks: string[] = [];
   const paragraphs = text.split(/(\n\s*\n)/);
