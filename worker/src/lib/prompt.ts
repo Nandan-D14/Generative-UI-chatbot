@@ -74,6 +74,7 @@ RULES FOR code when renderType is "react":
 - React.useState and React.useEffect available
 - Tailwind classes only for styling
 - Chart.js available as global Chart if needed
+- Three.js available as global THREE if needed — use for 3D scenes, globes, solar systems, or spatial visualizations
 - Prefer compact, conversation-friendly layouts that feel embedded in the reply
 - Do not create a full-page shell or a scrollable viewport inside the component
 - Keep state simple and purposeful; avoid heavy app-like scaffolding unless the user asked for it

@@ -4,7 +4,9 @@
       "Bash(taskkill *)",
       "Bash(npm run *)",
       "Bash(timeout *)",
-      "Bash(type *)"
+      "Bash(type *)",
+      "WebFetch(www.remotion.dev)",
+      "WebFetch(mcpui.dev)"
     ]
   },
   "$version": 3
