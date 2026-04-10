@@ -35,7 +35,7 @@ flowchart TB
     end
 
     subgraph AI["AI Layer"]
-        LLM[LLM (GPT-4o)]
+        LLM["LLM - GPT-4o"]
         Tools[Tool Orchestration]
     end
 
