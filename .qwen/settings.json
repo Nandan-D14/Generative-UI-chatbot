@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(taskkill *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(timeout *)",
+      "Bash(type *)"
     ]
   },
   "$version": 3

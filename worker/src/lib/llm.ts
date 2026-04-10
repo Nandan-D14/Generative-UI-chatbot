@@ -1,7 +1,7 @@
 import { ChatOpenAI } from '@langchain/openai';
 import type { Env } from '../types';
 
-type EmbeddingInputType = 'query' | 'passage';
+type EmbeddingInputType = 'query' | 'document';
 
 type EmbeddingRecord = {
   embedding: number[];
@@ -47,13 +47,11 @@ export async function generateEmbeddings(
     body: JSON.stringify({
       input,
       model: env.LLM_EMBED_MODEL,
-      input_type: inputType,
-      encoding_format: 'float',
-      truncate: 'END'
+      encoding_format: 'float'
     })
   });
 
-  const payload = await response.json() as EmbeddingsResponse;
+  const payload = (await response.json()) as EmbeddingsResponse;
 
   if (!response.ok) {
     const message = payload.error?.message || `Embedding request failed with status ${response.status}`;
