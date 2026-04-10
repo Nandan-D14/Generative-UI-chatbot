@@ -15,9 +15,11 @@ const sharedDocumentHead = `
   </style>
 `;
 
-export function buildIframeHTML(code: string, renderType: 'html' | 'react'): string {
+export function buildIframeHTML(code: string, renderType: 'html' | 'react', frameId: string): string {
+  const sizeReporterScript = buildSizeReporterScript(frameId);
+
   if (renderType === 'html') {
-    return wrapHTMLDocument(code);
+    return wrapHTMLDocument(code, sizeReporterScript);
   }
 
   return `<!DOCTYPE html>
@@ -36,11 +38,12 @@ export function buildIframeHTML(code: string, renderType: 'html' | 'react'): str
     ${code}
     ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
   <\/script>
+  ${sizeReporterScript}
 </body>
 </html>`;
 }
 
-function wrapHTMLDocument(code: string): string {
+function wrapHTMLDocument(code: string, sizeReporterScript: string): string {
   if (/<html[\s>]/i.test(code)) {
     let wrapped = code;
 
@@ -55,6 +58,12 @@ function wrapHTMLDocument(code: string): string {
       (_match, attrs: string) => `<body${attrs} style="margin:0;padding:0;background:transparent;overflow:hidden;">`
     );
 
+    if (/<\/body>/i.test(wrapped)) {
+      wrapped = wrapped.replace(/<\/body>/i, `${sizeReporterScript}</body>`);
+    } else {
+      wrapped += sizeReporterScript;
+    }
+
     return wrapped;
   }
 
@@ -65,10 +74,65 @@ function wrapHTMLDocument(code: string): string {
 </head>
 <body>
   ${code}
+  ${sizeReporterScript}
 </body>
 </html>`;
 }
 
-export function renderToIframe(iframe: HTMLIFrameElement, code: string, renderType: 'html' | 'react') {
-  iframe.srcdoc = buildIframeHTML(code, renderType);
+function buildSizeReporterScript(frameId: string): string {
+  return `<script>
+    (() => {
+      const frameId = ${JSON.stringify(frameId)};
+      let rafId = 0;
+
+      const reportSize = () => {
+        const body = document.body;
+        const html = document.documentElement;
+        if (!body || !html) return;
+
+        const width = Math.max(body.scrollWidth, body.offsetWidth, html.scrollWidth, html.offsetWidth);
+        const height = Math.max(body.scrollHeight, body.offsetHeight, html.scrollHeight, html.offsetHeight);
+
+        parent.postMessage({
+          source: 'visualmind-iframe-size',
+          frameId,
+          width,
+          height
+        }, '*');
+      };
+
+      const scheduleReport = () => {
+        cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(reportSize);
+      };
+
+      window.addEventListener('load', scheduleReport);
+      window.addEventListener('resize', scheduleReport);
+      document.addEventListener('DOMContentLoaded', scheduleReport);
+
+      if (window.ResizeObserver) {
+        const resizeObserver = new ResizeObserver(scheduleReport);
+        resizeObserver.observe(document.documentElement);
+        if (document.body) resizeObserver.observe(document.body);
+      }
+
+      if (window.MutationObserver) {
+        const mutationObserver = new MutationObserver(scheduleReport);
+        mutationObserver.observe(document.documentElement, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          characterData: true
+        });
+      }
+
+      [0, 60, 180, 400, 900, 1600].forEach((delay) => {
+        setTimeout(scheduleReport, delay);
+      });
+    })();
+  <\/script>`;
+}
+
+export function renderToIframe(iframe: HTMLIFrameElement, code: string, renderType: 'html' | 'react', frameId: string) {
+  iframe.srcdoc = buildIframeHTML(code, renderType, frameId);
 }
