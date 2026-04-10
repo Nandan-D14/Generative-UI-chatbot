@@ -12,9 +12,9 @@ export function MarkdownContent({ content, inverse = false }: Props) {
   return (
     <div
       className={`prose max-w-none transition-colors duration-200 ease-in-out ${
-        inverse 
-          ? 'prose-invert prose-p:text-blue-50 prose-headings:text-white prose-a:text-blue-200 prose-strong:text-blue-100 prose-code:text-blue-100 prose-ul:text-blue-50 prose-ol:text-blue-50' 
-          : 'prose-neutral prose-p:text-neutral-700 prose-headings:text-neutral-900 prose-a:text-neutral-900 prose-strong:text-neutral-900'
+        inverse
+          ? 'prose-invert prose-p:text-blue-50 prose-headings:text-white prose-a:text-blue-200 prose-strong:text-blue-100 prose-code:text-blue-100 prose-ul:text-blue-50 prose-ol:text-blue-50'
+          : 'prose-neutral prose-p:text-neutral-700 dark:text-neutral-200 prose-headings:text-neutral-900 dark:text-neutral-100 prose-a:text-neutral-900 dark:text-neutral-100 prose-strong:text-neutral-900 dark:text-neutral-100 prose-ul:text-neutral-700 dark:text-neutral-300 prose-ol:text-neutral-700 dark:text-neutral-300'
       }`}
     >
       <ReactMarkdown
@@ -51,8 +51,8 @@ export function MarkdownContent({ content, inverse = false }: Props) {
           },
           table({ children, ...props }) {
             return (
-              <div className="overflow-hidden rounded-xl border border-neutral-200 shadow-sm mt-4 mb-4">
-                <table className="min-w-full divide-y divide-neutral-200" {...props}>
+              <div className="overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 shadow-sm mt-4 mb-4">
+                <table className="min-w-full divide-y divide-neutral-200 dark:divide-neutral-700" {...props}>
                   {children}
                 </table>
               </div>
@@ -60,49 +60,49 @@ export function MarkdownContent({ content, inverse = false }: Props) {
           },
           th({ children, ...props }) {
             return (
-              <th className="bg-neutral-50 px-4 py-3 text-left text-sm font-semibold text-neutral-900" {...props}>
+              <th className="bg-neutral-50 dark:bg-neutral-800 px-4 py-3 text-left text-sm font-semibold text-neutral-900 dark:text-neutral-100" {...props}>
                 {children}
               </th>
             );
           },
           td({ children, ...props }) {
             return (
-              <td className="px-4 py-3 text-sm text-neutral-700 border-t border-neutral-200" {...props}>
+              <td className="px-4 py-3 text-sm text-neutral-700 dark:text-neutral-300 border-t border-neutral-200 dark:border-neutral-700" {...props}>
                 {children}
               </td>
             );
           },
           a({ href, children, ...props }) {
             return (
-              <a href={href} target="_blank" rel="noopener noreferrer" className="font-medium underline underline-offset-4 decoration-neutral-300 hover:decoration-neutral-900 transition-colors" {...props}>
+              <a href={href} target="_blank" rel="noopener noreferrer" className="font-medium underline underline-offset-4 decoration-neutral-300 dark:decoration-neutral-600 hover:decoration-neutral-900 dark:hover:decoration-neutral-100 transition-colors text-neutral-900 dark:text-neutral-100" {...props}>
                 {children}
               </a>
             );
           },
           p({ children, ...props }) {
-            return <p className="leading-relaxed mb-4 last:mb-0" {...props}>{children}</p>;
+            return <p className="leading-relaxed mb-4 last:mb-0 text-neutral-700 dark:text-neutral-200" {...props}>{children}</p>;
           },
           h1({ children, ...props }) {
-            return <h1 className="text-2xl font-bold mt-8 mb-4 tracking-tight" {...props}>{children}</h1>;
+            return <h1 className="text-2xl font-bold mt-8 mb-4 tracking-tight text-neutral-900 dark:text-neutral-100" {...props}>{children}</h1>;
           },
           h2({ children, ...props }) {
-            return <h2 className="text-xl font-bold mt-8 mb-4 tracking-tight" {...props}>{children}</h2>;
+            return <h2 className="text-xl font-bold mt-8 mb-4 tracking-tight text-neutral-900 dark:text-neutral-100" {...props}>{children}</h2>;
           },
           h3({ children, ...props }) {
-            return <h3 className="text-lg font-semibold mt-6 mb-3 tracking-tight" {...props}>{children}</h3>;
+            return <h3 className="text-lg font-semibold mt-6 mb-3 tracking-tight text-neutral-900 dark:text-neutral-100" {...props}>{children}</h3>;
           },
           ul({ children, ...props }) {
-            return <ul className="list-disc pl-6 mb-4 space-y-2 marker:text-neutral-400" {...props}>{children}</ul>;
+            return <ul className="list-disc pl-6 mb-4 space-y-2 marker:text-neutral-400 dark:marker:text-neutral-500" {...props}>{children}</ul>;
           },
           ol({ children, ...props }) {
-            return <ol className="list-decimal pl-6 mb-4 space-y-2 marker:text-neutral-500 font-medium" {...props}>{children}</ol>;
+            return <ol className="list-decimal pl-6 mb-4 space-y-2 marker:text-neutral-500 dark:marker:text-neutral-400 font-medium" {...props}>{children}</ol>;
           },
           li({ children, ...props }) {
-            return <li className="pl-1" {...props}><span className="font-normal">{children}</span></li>;
+            return <li className="pl-1" {...props}><span className="font-normal text-neutral-700 dark:text-neutral-200">{children}</span></li>;
           },
           blockquote({ children, ...props }) {
             return (
-              <blockquote className="border-l-4 border-neutral-300 pl-4 py-1 italic text-neutral-600 bg-neutral-50/50 rounded-r-lg my-4" {...props}>
+              <blockquote className="border-l-4 border-neutral-300 dark:border-neutral-600 pl-4 py-1 italic text-neutral-600 dark:text-neutral-300 bg-neutral-50/50 dark:bg-neutral-800/40 rounded-r-lg my-4" {...props}>
                 {children}
               </blockquote>
             );

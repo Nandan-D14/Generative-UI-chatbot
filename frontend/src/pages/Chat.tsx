@@ -269,8 +269,8 @@ export function ChatPage() {
     : messages;
 
   return (
-    <div className="flex h-full min-h-0 bg-neutral-50/50">
-      <div className="flex min-w-0 flex-1 flex-col h-full bg-white ml-2 mt-2 mr-2 rounded-tl-2xl rounded-tr-2xl border border-neutral-200/50 shadow-sm overflow-hidden">
+    <div className="flex h-full min-h-0 bg-neutral-50/50 dark:bg-neutral-900/50 transition-colors duration-300">
+      <div className="flex min-w-0 flex-1 flex-col h-full bg-white dark:bg-neutral-900 ml-2 mt-2 mr-2 rounded-tl-2xl rounded-tr-2xl border border-neutral-200/50 dark:border-neutral-800 shadow-sm overflow-hidden transition-colors duration-300">
         <ChatWindow messages={displayMessages} errorMessage={apiError} />
         <InputBar onSend={handleSend} isLoading={isStreaming || isLoadingMessages} />
       </div>

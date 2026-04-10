@@ -33,6 +33,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     } else {
       root.classList.remove('dark');
     }
+    // Clear inline styles set by the pre-load script in index.html
+    root.style.backgroundColor = '';
+    root.style.color = '';
     localStorage.setItem(THEME_STORAGE_KEY, theme);
   }, [theme]);
 
