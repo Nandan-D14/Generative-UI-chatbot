@@ -1,109 +1,94 @@
-[https://claude.ai/share/e1d5b52e-e4c6-4baa-81cf-216d9aa2336a]
-# 🤖 AI Chatbot That Responds with User interfaces 
+# VisualMind
 
-> **An AI-powered conversational system that transforms natural language queries into real-time, interactive dashboards — instead of static text responses.**
-
----
-
-## 📌 Table of Contents
-
-- [Overview](#overview)
-- [Problem Statement](#problem-statement)
-- [Solution](#solution)
-- [System Architecture](#system-architecture)
-- [Tech Stack](#tech-stack)
-- [File Structure](#file-structure)
-- [Installation & Setup](#installation--setup)
-- [Environment Variables](#environment-variables)
-- [How It Works](#how-it-works)
-- [API Reference](#api-reference)
-- [Example Queries](#example-queries)
-- [Contributing](#contributing)
-- [License](#license)
+> **AI-Powered Generative UI Chatbot SaaS** — Transform natural language into interactive dashboards, charts, and UI components in real-time.
 
 ---
 
 ## Overview
 
-**QueryDash** is an AI-powered chatbot that goes beyond traditional text-based responses. When a user types a natural language query like:
+VisualMind is a full-stack AI chatbot SaaS that goes beyond text responses. When users ask questions, the system generates live, interactive UI components (charts, tables, forms, dashboards) rendered directly in the chat interface.
 
-> *"Show me monthly sales by region for Q3"*
+### Key Capabilities
 
-Instead of replying with text, the system:
-- Understands the query using an LLM + ReAct reasoning loop
-- Fetches relevant data via MCP (Model Context Protocol)
-- Dynamically generates an interactive dashboard with charts, filters, and drill-downs
-
-No SQL. No dashboard configuration. No technical knowledge required.
-
----
-
-## Problem Statement
-
-Traditional data tools require users to know SQL, configure dashboards in Tableau or Power BI, or write scripts. Even modern AI chatbots return **static text answers**, forcing users to manually build charts and explore trends themselves.
-
-There is no system that bridges **natural language understanding** with **real-time, interactive visual output** — leaving a critical gap between asking a question and truly understanding the answer.
+- **Generative UI** — AI responses include interactive components, not just text
+- **Knowledge Base (RAG)** — Upload documents; AI answers are grounded in your data
+- **Component Registry** — Reusable UI components are cached and re-used
+- **ReAct Reasoning** — Multi-step thinking with tool orchestration
+- **Streaming Responses** — Real-time thinking steps + final output
 
 ---
 
-## Solution
+## Architecture
 
-An end-to-end AI pipeline:
+```mermaid
+flowchart TB
+    subgraph Client["Frontend (React + Vite)"]
+        UI[Chat Interface]
+        Renderer[UI Renderer]
+        KBUI[Knowledge Base UI]
+    end
 
-```
-User Query (Chat)
-      ↓
-LLM + ReAct Reasoning
-      ↓
-LangChain Workflow Orchestration
-      ↓
-MCP Data Fetching Layer
-      ↓
-Dynamic UI / Dashboard Generator
-      ↓
-Interactive Dashboard Output
+    subgraph Edge["Edge Layer (Cloudflare Workers)"]
+        Auth[Clerk Auth Middleware]
+        Router[API Router]
+        Agent[ReAct Agent]
+    end
+
+    subgraph AI["AI Layer"]
+        LLM[LLM (GPT-4o)]
+        Tools[Tool Orchestration]
+    end
+
+    subgraph Storage["Storage Layer"]
+        D1[(D1 Database)]
+        R2[(R2 File Storage)]
+        Vec[(Vectorize)]
+    end
+
+    UI -->|Streaming SSE| Router
+    Router --> Auth
+    Auth --> Agent
+    Agent --> LLM
+    Agent --> Tools
+    Tools -->|RAG Search| Vec
+    Tools -->|Component Lookup| R2
+    Agent --> D1
+    Renderer -->|iframe srcdoc| UI
+    KBUI -->|Upload| R2
 ```
 
 ---
 
-## System Architecture
+## How It Works
 
-```
-┌──────────────────────────────────────────────────────────┐
-│                        FRONTEND                          │
-│           Chat Interface + Dashboard Renderer            │
-│            (React + Recharts / Chart.js)                 │
-└─────────────────────────┬────────────────────────────────┘
-                          │ REST / WebSocket
-┌─────────────────────────▼────────────────────────────────┐
-│                    BACKEND LAYER                          │
-│                                                          │
-│  ┌─────────────┐  ┌──────────────┐  ┌────────────────┐  │
-│  │  LLM Core   │  │ Prompt Engine│  │   LangChain    │  │
-│  │ (ReAct loop)│→ │(Task struct.)│→ │  Orchestrator  │  │
-│  └─────────────┘  └──────────────┘  └───────┬────────┘  │
-│                                             │            │
-│  ┌──────────────────────────────────────────▼──────────┐ │
-│  │                   DATA LAYER (MCP)                  │ │
-│  │  ┌───────────┐  ┌────────────┐  ┌───────────────┐  │ │
-│  │  │MCP Server │  │   Query    │  │  Data Sources │  │ │
-│  │  │           │  │  Planner   │  │ APIs/DB/Files │  │ │
-│  │  └───────────┘  └────────────┘  └───────────────┘  │ │
-│  └──────────────────────────────────────────────────────┘ │
-│                                                          │
-│  ┌──────────────────────────────────────────────────────┐ │
-│  │                 UI GENERATION ENGINE                 │ │
-│  │  ┌────────────┐  ┌─────────────┐  ┌──────────────┐ │ │
-│  │  │  Chart Gen │  │Layout Engine│  │Filter Engine │ │ │
-│  │  │Bar/Line/Pie│  │ Tile layout │  │Date/Region.. │ │ │
-│  │  └────────────┘  └─────────────┘  └──────────────┘ │ │
-│  └──────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────┘
-                          │
-┌─────────────────────────▼────────────────────────────────┐
-│               INTERACTIVE DASHBOARD OUTPUT                │
-│          (Charts + Filters + Tables + Drill-down)         │
-└──────────────────────────────────────────────────────────┘
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant W as Worker (Edge)
+    participant A as ReAct Agent
+    participant T as Tools
+    participant V as Vectorize
+    participant L as LLM
+
+    U->>F: Types query
+    F->>W: POST /api/chat/stream
+    W->>A: Initialize agent
+    
+    loop ReAct Loop
+        A->>L: Think + Decide action
+        L-->>A: Action: rag_search
+        A->>T: Execute tool
+        T->>V: Vector search
+        V-->>T: Relevant chunks
+        T-->>A: Observation
+        A->>F: Stream thinking step
+    end
+    
+    A->>L: Generate final response
+    L-->>A: JSON with UI code
+    A->>F: Stream final response
+    F->>U: Render text + interactive UI
 ```
 
 ---
@@ -112,322 +97,356 @@ Interactive Dashboard Output
 
 | Layer | Technology |
 |-------|------------|
-| **LLM** | OpenAI GPT-4 / Claude (via API) |
-| **Reasoning** | ReAct (Reason + Act) pattern |
-| **Orchestration** | LangChain |
-| **Data Protocol** | MCP (Model Context Protocol) |
-| **Backend** | Python (FastAPI) |
-| **Frontend** | React.js |
-| **Charts** | Recharts / Chart.js |
-| **Database** | PostgreSQL / MongoDB |
-| **Caching** | Redis |
-| **Auth** | JWT |
-| **Containerization** | Docker + Docker Compose |
+| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS |
+| **Authentication** | Clerk (JWT verification at edge) |
+| **Backend Runtime** | Cloudflare Workers (serverless edge) |
+| **Database** | Cloudflare D1 (SQLite) |
+| **Vector Store** | Cloudflare Vectorize |
+| **File Storage** | Cloudflare R2 |
+| **LLM Orchestration** | LangChain.js |
+| **Reasoning Pattern** | ReAct (Reason + Act) |
 
 ---
 
-## File Structure
+## Project Structure
 
 ```
-querydash/
+visualmind/
+├── frontend/                    # React + Vite + Tailwind
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── chat/           # Chat UI, message bubbles, visual panel
+│   │   │   ├── kb/             # Knowledge base upload & management
+│   │   │   ├── artifacts/      # Saved visual outputs
+│   │   │   ├── registry/       # Component registry UI
+│   │   │   └── shared/         # Sidebar, topbar, status badges
+│   │   ├── pages/              # Route pages
+│   │   ├── hooks/              # useStream, useRegistry, useKnowledgeBase
+│   │   ├── lib/                # API client, renderer, markdown utils
+│   │   └── contexts/           # Theme, sidebar state
+│   └── package.json
 │
-├── README.md                          ← You are here
-├── .env.example                       ← Environment variable template
-├── .gitignore
-├── docker-compose.yml                 ← Full stack orchestration
-├── requirements.txt                   ← Python dependencies
-├── package.json                       ← Node/frontend dependencies
+├── worker/                      # Cloudflare Worker (TypeScript)
+│   ├── src/
+│   │   ├── index.ts            # Main router
+│   │   ├── routes/             # Chat, KB, artifacts, registry endpoints
+│   │   ├── lib/
+│   │   │   ├── agent.ts        # ReAct reasoning agent
+│   │   │   ├── tools/          # RAG, web search, registry tools
+│   │   │   ├── rag.ts          # Streaming response handler
+│   │   │   └── registry.ts     # Component CRUD logic
+│   │   └── middleware/         # Clerk auth verification
+│   └── migrations/             # D1 schema migrations
 │
-├── backend/                           ← Python FastAPI backend
-│   ├── main.py                        ← App entry point
-│   ├── config.py                      ← Config loader
-│   │
-│   ├── api/                           ← API route handlers
-│   │   ├── __init__.py
-│   │   ├── chat.py                    ← /chat endpoint (main query handler)
-│   │   ├── dashboard.py               ← /dashboard CRUD endpoints
-│   │   └── auth.py                    ← /auth login/register
-│   │
-│   ├── core/                          ← Core AI pipeline
-│   │   ├── __init__.py
-│   │   ├── llm_agent.py               ← LLM + ReAct reasoning loop
-│   │   ├── prompt_engine.py           ← Prompt templates + structuring
-│   │   ├── langchain_orchestrator.py  ← LangChain workflow manager
-│   │   └── react_loop.py              ← Reason → Act → Observe cycle
-│   │
-│   ├── mcp/                           ← MCP data layer
-│   │   ├── __init__.py
-│   │   ├── mcp_server.py              ← MCP server setup
-│   │   ├── query_planner.py           ← Decides what/where to fetch
-│   │   ├── connectors/
-│   │   │   ├── sql_connector.py       ← SQL database connector
-│   │   │   ├── rest_connector.py      ← REST API connector
-│   │   │   ├── csv_connector.py       ← CSV / file connector
-│   │   │   └── mongo_connector.py     ← MongoDB connector
-│   │   └── schema_resolver.py        ← Auto-infers schema from query
-│   │
-│   ├── ui_generator/                  ← Dashboard generation engine
-│   │   ├── __init__.py
-│   │   ├── chart_generator.py         ← Bar, line, pie, scatter, etc.
-│   │   ├── layout_engine.py           ← Tile layout builder
-│   │   ├── filter_engine.py           ← Date, region, category filters
-│   │   └── dashboard_schema.py        ← JSON schema for dashboard spec
-│   │
-│   ├── models/                        ← Pydantic data models
-│   │   ├── chat.py
-│   │   ├── dashboard.py
-│   │   └── user.py
-│   │
-│   └── utils/
-│       ├── logger.py
-│       ├── cache.py                   ← Redis cache helpers
-│       └── validators.py
+├── shared/
+│   └── types.ts                # Shared TypeScript types
 │
-├── frontend/                          ← React.js frontend
-│   ├── public/
-│   │   └── index.html
-│   │
-│   └── src/
-│       ├── App.jsx
-│       ├── index.jsx
-│       │
-│       ├── components/
-│       │   ├── ChatInterface/
-│       │   │   ├── ChatWindow.jsx     ← Main chat window
-│       │   │   ├── MessageBubble.jsx  ← Chat message renderer
-│       │   │   └── QueryInput.jsx     ← User input box
-│       │   │
-│       │   ├── Dashboard/
-│       │   │   ├── DashboardFrame.jsx ← Main dashboard wrapper
-│       │   │   ├── ChartTile.jsx      ← Individual chart tile
-│       │   │   ├── FilterBar.jsx      ← Dashboard filter controls
-│       │   │   └── TableView.jsx      ← Data table component
-│       │   │
-│       │   └── Charts/
-│       │       ├── BarChart.jsx
-│       │       ├── LineChart.jsx
-│       │       ├── PieChart.jsx
-│       │       └── ScatterChart.jsx
-│       │
-│       ├── hooks/
-│       │   ├── useChat.js             ← Chat state management
-│       │   └── useDashboard.js        ← Dashboard state management
-│       │
-│       ├── services/
-│       │   ├── api.js                 ← Axios API client
-│       │   └── websocket.js           ← Real-time WS handler
-│       │
-│       └── styles/
-│           └── globals.css
-│
-├── prompts/                           ← Prompt templates (versioned)
-│   ├── system_prompt.txt
-│   ├── chart_selection_prompt.txt
-│   ├── data_fetch_prompt.txt
-│   └── layout_generation_prompt.txt
-│
-├── tests/
-│   ├── backend/
-│   │   ├── test_llm_agent.py
-│   │   ├── test_mcp_connectors.py
-│   │   └── test_ui_generator.py
-│   └── frontend/
-│       └── Dashboard.test.jsx
-│
-└── docs/
-    ├── architecture.md
-    ├── api_reference.md
-    └── screenshots/
-        └── demo.png
+└── README.md
 ```
 
 ---
 
-## Installation & Setup
+## Features Deep Dive
+
+### 1. Generative UI
+
+The AI doesn't just return text — it generates interactive UI components:
+
+```mermaid
+flowchart LR
+    Q[User Query] --> LLM[LLM Processing]
+    LLM --> |renderType: html| H[Static HTML + Chart.js]
+    LLM --> |renderType: react| R[Interactive React Component]
+    H --> I[Sandboxed iframe]
+    R --> I
+    I --> D[Dashboard / Chart / Form]
+```
+
+**Supported Component Types:**
+- Charts (bar, line, pie, scatter) via Chart.js CDN
+- Data tables with sorting and filtering
+- Metric cards and KPI displays
+- Interactive forms with state
+- Dashboards with multiple widgets
+
+### 2. Knowledge Base (RAG)
+
+Upload documents and ask questions grounded in your data:
+
+```mermaid
+flowchart LR
+    subgraph Ingestion
+        DOC[Document Upload] --> CHUNK[Text Chunking]
+        CHUNK --> EMB[Embedding Generation]
+        EMB --> VEC[(Vectorize Index)]
+    end
+    
+    subgraph Query
+        Q[User Question] --> QE[Query Embedding]
+        QE --> VS[Vector Search]
+        VEC --> VS
+        VS --> CTX[Context Chunks]
+        CTX --> LLM[LLM Response]
+    end
+```
+
+### 3. Component Registry
+
+Generated components are saved and reused:
+
+```mermaid
+flowchart TB
+    Q[New Query] --> LOOKUP{Registry Lookup}
+    LOOKUP --> |Found| REUSE[Reuse Component]
+    LOOKUP --> |Not Found| GEN[Generate New]
+    GEN --> SAVE[Save to Registry]
+    SAVE --> R2[(R2 Storage)]
+    REUSE --> RENDER[Render with Props]
+    
+    style REUSE fill:#90EE90
+    style GEN fill:#FFB6C1
+```
+
+### 4. ReAct Reasoning
+
+The agent uses a Reason-Act-Observe loop:
+
+```mermaid
+stateDiagram-v2
+    [*] --> Think
+    Think --> Decide: What should I do?
+    Decide --> Act: Choose tool
+    Act --> Observe: Execute tool
+    Observe --> Think: More info needed?
+    Observe --> Respond: Have answer
+    Respond --> [*]
+```
+
+**Available Tools:**
+| Tool | Purpose |
+|------|---------|
+| `rag_search` | Search knowledge base documents |
+| `web_search` | Search the web for current information |
+| `registry_lookup` | Find reusable UI components |
+| `generate_component` | Create new UI component |
+
+---
+
+## Database Schema
+
+```mermaid
+erDiagram
+    USERS ||--o{ CHATS : creates
+    USERS ||--o{ DOCUMENTS : uploads
+    USERS ||--o{ COMPONENTS : owns
+    USERS ||--o{ ARTIFACTS : saves
+    
+    CHATS ||--o{ MESSAGES : contains
+    MESSAGES ||--o{ ARTIFACTS : generates
+    
+    DOCUMENTS {
+        string id PK
+        string user_id FK
+        string name
+        string r2_key
+        int chunk_count
+        string status
+    }
+    
+    COMPONENTS {
+        string id PK
+        string user_id FK
+        string name UK
+        string render_type
+        string r2_key
+        int use_count
+    }
+    
+    MESSAGES {
+        string id PK
+        string chat_id FK
+        string role
+        text text
+        string render_type
+        text code
+    }
+```
+
+---
+
+## Getting Started
 
 ### Prerequisites
 
-- Python 3.10+
 - Node.js 18+
-- Docker & Docker Compose
-- An OpenAI or Anthropic API key
+- Cloudflare account (free tier works)
+- Clerk account for authentication
+- OpenAI API key (or compatible LLM)
 
----
-
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/Nandan-D14/Generative-UI-chatbot.git
-cd querydash
-```
-
-### 2. Set up environment variables
+### 1. Clone & Install
 
 ```bash
-cp .env.example .env
-# Edit .env and fill in your API keys (see below)
+git clone https://github.com/yourusername/visualmind.git
+cd visualmind
+
+# Install frontend dependencies
+cd frontend && npm install
+
+# Install worker dependencies
+cd ../worker && npm install
 ```
 
-### 3. Run with Docker (recommended)
+### 2. Cloudflare Setup
 
 ```bash
-docker-compose up --build
+# Create D1 database
+wrangler d1 create visualmind
+
+# Create Vectorize index
+wrangler vectorize create visualmind-kb --dimensions=2048 --metric=cosine
+
+# Create R2 bucket
+wrangler r2 bucket create visualmind-storage
 ```
 
-App will be available at: `http://localhost:3000`
+### 3. Configure Environment
 
----
-
-### Manual Setup (without Docker)
-
-#### Backend
-
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
-```
-
-#### Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
----
-
-## Environment Variables
-
-Create a `.env` file in the root directory:
-
+**Frontend (`frontend/.env`):**
 ```env
-# LLM
-OPENAI_API_KEY=your_openai_api_key_here
-ANTHROPIC_API_KEY=your_anthropic_api_key_here
-LLM_PROVIDER=openai                   # openai | anthropic
-
-# Backend
-BACKEND_HOST=0.0.0.0
-BACKEND_PORT=8000
-SECRET_KEY=your_jwt_secret_key
-
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/querydash
-MONGO_URL=mongodb://localhost:27017/querydash
-
-# Redis
-REDIS_URL=redis://localhost:6379
-
-# MCP
-MCP_SERVER_PORT=5050
-MCP_DATA_SOURCE=postgres             # postgres | mongo | rest | csv
-
-# Frontend
-VITE_API_BASE_URL=http://localhost:8000
-VITE_WS_URL=ws://localhost:8000/ws
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_xxx
+VITE_API_URL=http://localhost:8787
 ```
 
----
-
-## How It Works
-
-### Step-by-step pipeline
-
+**Worker (`worker/.dev.vars`):**
+```env
+CLERK_SECRET_KEY=sk_test_xxx
+LLM_API_KEY=sk-xxx
+LLM_BASE_URL=https://api.openai.com/v1
+FRONTEND_URL=http://localhost:5173
 ```
-1. User types:  "Show Q3 sales by region as a bar chart"
-        ↓
-2. LLM parses intent:
-   - Metric:    sales
-   - Period:    Q3
-   - Dimension: region
-   - Chart:     bar
-        ↓
-3. ReAct loop decides:
-   - Action: fetch_data(table=sales, filter=Q3, group_by=region)
-        ↓
-4. MCP fetches data from connected source (SQL / API / CSV)
-        ↓
-5. UI Generator produces dashboard JSON spec:
-   {
-     "type": "bar_chart",
-     "title": "Q3 Sales by Region",
-     "x_axis": "region",
-     "y_axis": "sales",
-     "filters": ["date_range", "region"],
-     "data": [...]
-   }
-        ↓
-6. Frontend renders interactive dashboard with:
-   - Bar chart
-   - Region filter dropdown
-   - Date range picker
-   - Drill-down on click
+
+### 4. Run Migrations
+
+```bash
+cd worker
+wrangler d1 execute visualmind --file=migrations/001_initial.sql --local
 ```
+
+### 5. Start Development
+
+```bash
+# Terminal 1: Start worker
+cd worker && npm run dev
+
+# Terminal 2: Start frontend
+cd frontend && npm run dev
+```
+
+Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
 ## API Reference
 
-### `POST /chat`
-Send a user query and receive a dashboard spec.
+### Chat
 
-**Request:**
+```
+POST /api/chat/stream
+```
+
+Streaming endpoint for chat queries. Returns SSE events:
+
 ```json
-{
-  "message": "Show me monthly revenue for 2024",
-  "session_id": "abc123"
+// Thinking step event
+{ "type": "thought", "step": { "thought": "...", "action": "rag_search", ... } }
+
+// Final response event
+{ "type": "response", "content": { "text": "...", "renderType": "html", "code": "..." } }
+```
+
+### Knowledge Base
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/kb/documents` | List all documents |
+| `POST /api/kb/upload` | Upload new document |
+| `DELETE /api/kb/documents/:id` | Delete document |
+
+### Component Registry
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/registry` | List saved components |
+| `POST /api/registry/save` | Save new component |
+| `DELETE /api/registry/:name` | Delete component |
+
+### Artifacts
+
+| Endpoint | Description |
+|----------|-------------|
+| `GET /api/artifacts` | List saved artifacts |
+| `POST /api/artifacts/save` | Save artifact from chat |
+| `DELETE /api/artifacts/:id` | Delete artifact |
+
+---
+
+## Response Format
+
+The LLM returns structured JSON for every response:
+
+```typescript
+type LLMResponse = {
+  text: string;                          // Text explanation
+  renderType: 'none' | 'html' | 'react'; // UI type
+  componentName?: string;                // Reuse existing component
+  props?: Record<string, unknown>;       // Data for component
+  code?: string;                         // Generated HTML/JSX
+  saveAsComponent?: {                    // Save to registry
+    name: string;
+    description: string;
+    propsSchema: Record<string, string>;
+  };
+  sources?: Array<{                      // RAG citations
+    documentName: string;
+    chunk: string;
+  }>;
 }
 ```
 
-**Response:**
-```json
-{
-  "dashboard": {
-    "type": "line_chart",
-    "title": "Monthly Revenue 2024",
-    "data": [...],
-    "filters": ["month", "product_category"],
-    "layout": "single"
-  },
-  "message": "Here is your monthly revenue for 2024."
-}
+---
+
+## Deployment
+
+### Frontend (Cloudflare Pages)
+
+```bash
+cd frontend
+npm run build
+wrangler pages deploy dist
+```
+
+### Worker (Cloudflare Workers)
+
+```bash
+cd worker
+wrangler deploy
+```
+
+### Set Production Secrets
+
+```bash
+wrangler secret put CLERK_SECRET_KEY
+wrangler secret put LLM_API_KEY
 ```
 
 ---
 
-### `GET /dashboard/{session_id}`
-Retrieve a previously generated dashboard.
+## Security
 
-### `POST /dashboard/export`
-Export dashboard as PNG or PDF.
-
----
-
-## Example Queries
-
-| Query | Output |
-|-------|--------|
-| `"Show Q3 sales by region"` | Bar chart with region filter |
-| `"Compare revenue 2023 vs 2024"` | Grouped bar chart with year toggle |
-| `"What products are selling the most this month?"` | Ranked table + pie chart |
-| `"Show daily active users trend for last 30 days"` | Line chart with date filter |
-| `"Break down expenses by category"` | Pie chart + table drill-down |
-
----
-
-## Contributing
-
-1. Fork the repo
-2. Create your branch: `git checkout -b feature/your-feature`
-3. Commit your changes: `git commit -m "Add your feature"`
-4. Push to the branch: `git push origin feature/your-feature`
-5. Open a Pull Request
-
-Please follow the existing code style and add tests for any new features.
+- **Authentication**: Clerk JWT verification at edge
+- **Multi-tenancy**: All data scoped to user ID
+- **Sandboxed Rendering**: UI components run in `sandbox="allow-scripts"` iframes
+- **No External Resources**: Only Tailwind CDN and Chart.js allowed in generated code
 
 ---
 
@@ -437,4 +456,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 ---
 
-> Built with ❤️ using LLM + ReAct + LangChain + MCP
+> Built with Cloudflare Workers, LangChain.js, and React
