@@ -1,14 +1,7 @@
 import { VisualPanel } from './VisualPanel';
 import { ThinkingSteps } from './ThinkingSteps';
 import { MarkdownContent } from './MarkdownContent';
-import type { LLMResponse } from '../../../../shared/types';
-
-type ReActStep = {
-  thought: string;
-  action: string;
-  actionInput: string;
-  observation: string;
-};
+import type { LLMResponse, ReActStep } from '../../../../shared/types';
 
 type Props = {
   role: 'user' | 'assistant';
@@ -46,11 +39,22 @@ export function MessageBubble({ role, text, visualData, thinkingSteps, onSaveArt
   return (
     <div className="w-full mb-8 pt-2">
       <article className="w-full max-w-full">
-        {thinkingSteps && thinkingSteps.length > 0 && (
-          <div className="mb-4">
+        {thinkingSteps && thinkingSteps.length > 0 ? (
+          <div className={visualPayload || text.trim() ? 'mb-6' : 'mb-4'}>
             <ThinkingSteps steps={thinkingSteps} />
           </div>
-        )}
+        ) : null}
+
+        {visualPayload ? (
+          <div className="mb-6">
+            <VisualPanel
+              code={visualPayload.code}
+              renderType={visualPayload.renderType}
+              componentName={visualPayload.componentName}
+              onSaveArtifact={onSaveArtifact}
+            />
+          </div>
+        ) : null}
 
         {text.trim() ? (
           <MarkdownContent content={text} inverse={false} />
@@ -60,17 +64,6 @@ export function MessageBubble({ role, text, visualData, thinkingSteps, onSaveArt
             Working on it...
           </div>
         )}
-
-        {visualPayload ? (
-          <div className="mt-8 mb-4">
-            <VisualPanel
-              code={visualPayload.code}
-              renderType={visualPayload.renderType}
-              componentName={visualPayload.componentName}
-              onSaveArtifact={onSaveArtifact}
-            />
-          </div>
-        ) : null}
 
         <div className="mt-4 text-[11px] text-neutral-400">
           {timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

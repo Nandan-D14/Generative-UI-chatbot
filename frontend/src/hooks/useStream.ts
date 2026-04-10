@@ -1,13 +1,6 @@
 import { useState, useCallback } from 'react';
-import type { LLMResponse } from '../../../shared/types';
+import type { LLMResponse, ReActStep } from '../../../shared/types';
 import { parseLLMResponsePayload } from '../lib/response';
-
-export type ReActStep = {
-  thought: string;
-  action: string;
-  actionInput: string;
-  observation: string;
-};
 
 export function useStream() {
   const [isStreaming, setIsStreaming] = useState(false);
@@ -19,7 +12,8 @@ export function useStream() {
     message: string,
     chatId: string,
     history: Array<{ role: string; content: string }>,
-    token: string
+    token: string,
+    options: { useWebSearch: boolean }
   ) => {
     setIsStreaming(true);
     setCurrentText('');
@@ -32,7 +26,7 @@ export function useStream() {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify({ chatId, message, history })
+      body: JSON.stringify({ chatId, message, history, useWebSearch: options.useWebSearch })
     });
 
     if (!response.ok || !response.body) {
@@ -44,6 +38,12 @@ export function useStream() {
     const decoder = new TextDecoder();
     let buffer = '';
     let finalResponse: LLMResponse | null = null;
+    let finalSteps: ReActStep[] = [];
+
+    const mergeStep = (step: ReActStep) => {
+      finalSteps = upsertSteps(finalSteps, step);
+      setThinkingSteps(prev => upsertSteps(prev, step));
+    };
 
     while (true) {
       const { done, value } = await reader.read();
@@ -58,8 +58,12 @@ export function useStream() {
         try {
           const parsed = JSON.parse(line);
 
-          if (parsed.type === 'thought') {
-            setThinkingSteps(prev => [...prev, parsed.step]);
+          if (parsed.type === 'thought-start' && parsed.step) {
+            mergeStep(parsed.step as ReActStep);
+          }
+
+          if (parsed.type === 'thought-complete' && parsed.step) {
+            mergeStep(parsed.step as ReActStep);
           }
 
           if (parsed.type === 'response-start') {
@@ -87,7 +91,7 @@ export function useStream() {
     }
 
     setIsStreaming(false);
-    return finalResponse;
+    return { response: finalResponse, steps: finalSteps };
   }, []);
 
   const reset = useCallback(() => {
@@ -98,4 +102,17 @@ export function useStream() {
   }, []);
 
   return { isStreaming, currentText, thinkingSteps, completeResponse, startStream, reset };
+}
+
+function upsertSteps(steps: ReActStep[], incoming: ReActStep): ReActStep[] {
+  const index = steps.findIndex((step) => step.id === incoming.id);
+  if (index === -1) {
+    return [...steps, incoming];
+  }
+
+  return steps.map((step, currentIndex) => (
+    currentIndex === index
+      ? { ...step, ...incoming }
+      : step
+  ));
 }

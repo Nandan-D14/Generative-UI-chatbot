@@ -2,15 +2,18 @@ import { Hono } from 'hono';
 import { streamReActResponse } from '../lib/rag';
 import { saveComponent } from '../lib/registry';
 import type { AppEnv } from '../types';
+import type { ReActStep } from '../../../shared/types';
 
 export function chatRoutes(app: Hono<AppEnv>) {
   const router = new Hono<AppEnv>();
 
   router.post('/stream', async (c) => {
     const userId = c.get('userId') as string;
-    const { chatId, message, history } = await c.req.json();
+    const { chatId, message, history, useWebSearch } = await c.req.json();
 
-    const stream = await streamReActResponse(message, history, userId, c.env);
+    const stream = await streamReActResponse(message, history, userId, c.env, {
+      useWebSearch: Boolean(useWebSearch)
+    });
 
     return c.newResponse(stream, {
       headers: {
@@ -75,12 +78,15 @@ export function chatRoutes(app: Hono<AppEnv>) {
       const componentName = body.componentName || null;
       const componentProps = body.componentProps ? JSON.stringify(body.componentProps) : null;
       const code = body.code || null;
+      const thinkingSteps = Array.isArray(body.thinkingSteps)
+        ? JSON.stringify(body.thinkingSteps as ReActStep[])
+        : null;
 
       await c.env.DB.prepare(
-        'INSERT INTO messages (id, chat_id, role, text, render_type, component_name, component_props, code, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT INTO messages (id, chat_id, role, text, render_type, component_name, component_props, code, thinking_steps, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
       ).bind(
         id, body.chatId, body.role, body.text, renderType,
-        componentName, componentProps, code, Date.now()
+        componentName, componentProps, code, thinkingSteps, Date.now()
       ).run();
 
       await c.env.DB.prepare(

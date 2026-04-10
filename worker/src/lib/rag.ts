@@ -6,7 +6,10 @@ export async function streamReActResponse(
   userMessage: string,
   chatHistory: ChatMessage[],
   userId: string,
-  env: Env
+  env: Env,
+  options: {
+    useWebSearch?: boolean;
+  } = {}
 ): Promise<ReadableStream> {
   return new ReadableStream({
     async start(controller) {
@@ -17,10 +20,13 @@ export async function streamReActResponse(
 
       try {
         const result = await reactAgent(userMessage, chatHistory, userId, env, {
-          onStep(step) {
-            send({ type: 'thought', step });
+          onStepStart(step) {
+            send({ type: 'thought-start', step });
+          },
+          onStepComplete(step) {
+            send({ type: 'thought-complete', step });
           }
-        });
+        }, options);
 
         console.log('=== LLM RAW FINAL RESPONSE ===');
         console.log(result.finalResponse);

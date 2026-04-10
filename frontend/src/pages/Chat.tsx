@@ -3,10 +3,10 @@ import { useAuth } from '@clerk/clerk-react';
 import { ChatWindow } from '../components/chat/ChatWindow';
 import { InputBar } from '../components/chat/InputBar';
 import { ChatSidebar } from '../components/chat/ChatSidebar';
-import { useStream, ReActStep } from '../hooks/useStream';
+import { useStream } from '../hooks/useStream';
 import { fromUnixish } from '../lib/time';
 import { useSidebar } from '../contexts/SidebarContext';
-import type { LLMResponse } from '../../../shared/types';
+import type { LLMResponse, ReActStep } from '../../../shared/types';
 
 type Message = {
   id: string;
@@ -120,7 +120,7 @@ export function ChatPage() {
           props: msg.component_props ? JSON.parse(msg.component_props) : undefined,
           code: msg.code
         } : undefined,
-        thinkingSteps: [],
+        thinkingSteps: parseThinkingSteps(msg.thinking_steps),
         timestamp: fromUnixish(msg.created_at)
       }));
       setMessages(parsed);
@@ -131,7 +131,13 @@ export function ChatPage() {
     setIsLoadingMessages(false);
   }, [getToken]);
 
-  const saveMessage = useCallback(async (chatId: string, role: string, text: string, visualData?: LLMResponse) => {
+  const saveMessage = useCallback(async (
+    chatId: string,
+    role: string,
+    text: string,
+    visualData?: LLMResponse,
+    thinkingSteps?: ReActStep[]
+  ) => {
     const token = await getToken();
     if (!token) return;
 
@@ -148,7 +154,8 @@ export function ChatPage() {
         renderType: visualData?.renderType || 'none',
         componentName: visualData?.componentName,
         componentProps: visualData?.props,
-        code: visualData?.code
+        code: visualData?.code,
+        thinkingSteps
       })
     });
 
@@ -157,7 +164,7 @@ export function ChatPage() {
     }
   }, [getToken]);
 
-  const handleSend = async (message: string) => {
+  const handleSend = async (message: string, options: { useWebSearch: boolean }) => {
     const token = await getToken();
     if (!token) return;
     setApiError(null);
@@ -202,21 +209,27 @@ export function ChatPage() {
     history.push({ role: 'user', content: message });
 
     // Start streaming
-    const response = await startStream(message, chatId, history, token);
+    const streamResult = await startStream(message, chatId, history, token, options);
 
     // Save assistant response
-    if (response && chatId) {
+    if (streamResult?.response && chatId) {
       const assistantMsg: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        text: response.text,
-        visualData: response,
-        thinkingSteps: [...thinkingSteps],
+        text: streamResult.response.text,
+        visualData: streamResult.response,
+        thinkingSteps: streamResult.steps,
         timestamp: new Date()
       };
       setMessages(prev => [...prev, assistantMsg]);
       try {
-        await saveMessage(chatId, 'assistant', response.text, response);
+        await saveMessage(
+          chatId,
+          'assistant',
+          streamResult.response.text,
+          streamResult.response,
+          streamResult.steps
+        );
       } catch (error) {
         setApiError((error as Error).message);
       }
@@ -262,4 +275,33 @@ async function readApiError(response: Response, fallback: string) {
   } catch {}
 
   return fallback;
+}
+
+function parseThinkingSteps(raw: unknown): ReActStep[] {
+  if (typeof raw !== 'string' || !raw.trim()) return [];
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed.filter(isReActStep);
+  } catch {
+    return [];
+  }
+}
+
+function isReActStep(value: unknown): value is ReActStep {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as ReActStep).id === 'string' &&
+    typeof (value as ReActStep).thought === 'string' &&
+    typeof (value as ReActStep).action === 'string' &&
+    typeof (value as ReActStep).actionInput === 'string' &&
+    (
+      (value as ReActStep).status === 'running' ||
+      (value as ReActStep).status === 'completed' ||
+      (value as ReActStep).status === 'error'
+    )
+  );
 }
