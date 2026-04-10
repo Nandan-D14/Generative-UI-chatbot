@@ -6,3 +6,9 @@ dist/
 *.tsbuildinfo
 worker/.wrangler/
 *.sqlite
+
+# IDE and tool directories
+.qwen/
+.zencoder/
+.zenflow/
+.codex-logs/
