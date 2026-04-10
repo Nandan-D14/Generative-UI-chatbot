@@ -123,7 +123,7 @@ export async function reactAgent(
 
     const completedStep: ReActStep = {
       ...pendingStep,
-      observation: observation.slice(0, 500),
+      observation,
       status: 'completed'
     };
 
@@ -230,7 +230,7 @@ async function runPrefetchStep({
   const observation = await tool.call(input);
   const completedStep: ReActStep = {
     ...pendingStep,
-    observation: observation.slice(0, 500),
+    observation,
     status: 'completed'
   };
 
@@ -255,7 +255,7 @@ function parseToolCall(content: string): { name: string; input: string; id?: str
 
 function extractThought(content: string): string {
   const match = content.match(/Thought:\s*(.*?)(?=Action:|$)/s);
-  return match ? match[1].trim().slice(0, 200) : 'Thinking...';
+  return match ? match[1].trim().slice(0, 2000) : 'Thinking...';
 }
 
 function buildRuntimeInstructions(

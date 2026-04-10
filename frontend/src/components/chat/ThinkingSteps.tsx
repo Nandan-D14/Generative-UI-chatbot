@@ -13,66 +13,88 @@ const actionIcons: Record<string, string> = {
 };
 
 export function ThinkingSteps({ steps }: Props) {
+  const [isAllExpanded, setIsAllExpanded] = useState(false);
+
   if (!steps.length) return null;
 
   return (
-    <div className="mb-5 overflow-hidden rounded-[24px] border border-amber-200/70 bg-[linear-gradient(180deg,rgba(255,250,240,0.96),rgba(255,247,237,0.82))] shadow-sm">
-      <div className="border-b border-amber-200/70 px-4 py-3">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-700/80">
-          Thinking And Tool Use · {steps.length} step{steps.length > 1 ? 's' : ''}
-        </span>
+    <div className="mb-4 overflow-hidden rounded-2xl border border-transparent bg-transparent transition-all">
+      <div 
+        className="flex lg:w-fit cursor-pointer items-center justify-between px-3 py-1.5 hover:bg-neutral-50 rounded-lg transition-colors border border-transparent hover:border-neutral-200"
+        onClick={() => setIsAllExpanded(!isAllExpanded)}
+      >
+        <div className="flex items-center gap-2 text-neutral-400">
+          <svg className="w-3.5 h-3.5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          <span className="text-[11px] font-medium uppercase tracking-widest">
+            Thought Process ({steps.length})
+          </span>
+        </div>
+        <div className="ml-3 text-neutral-400">
+          {isAllExpanded ? (
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
+          ) : (
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+          )}
+        </div>
       </div>
-      <div className="divide-y divide-amber-100/80">
-        {steps.map((step, i) => (
-          <StepItem key={step.id} step={step} index={i} />
-        ))}
-      </div>
+      
+      {isAllExpanded && (
+        <div className="mt-3 divide-y divide-neutral-100 border-l border-neutral-200 ml-3 pl-2">
+          {steps.map((step) => (
+            <StepItem key={step.id} step={step} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function StepItem({ step, index }: { step: ReActStep; index: number }) {
+function StepItem({ step }: { step: ReActStep }) {
   const [expanded, setExpanded] = useState(true);
   const isRunning = step.status === 'running';
 
   return (
-    <div
-      className="cursor-pointer px-4 py-3 transition-colors hover:bg-white/60"
-      onClick={() => setExpanded(!expanded)}
-    >
-      <div className="flex items-start gap-3">
-        <span className="mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white text-[11px] font-semibold text-amber-700 shadow-sm">
-          {index + 1}
-        </span>
-        <span className="mt-0.5 text-base">{actionIcons[step.action] || '🔧'}</span>
+    <div className="py-3 pl-3">
+      <div 
+        className="flex cursor-pointer items-start gap-3 group"
+        onClick={() => setExpanded(!expanded)}
+      >
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <p className="truncate text-sm font-semibold text-neutral-800">{step.action.replace(/_/g, ' ')}</p>
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-sm">{actionIcons[step.action] || '🔧'}</span>
+            <p className="text-sm font-medium text-neutral-800 capitalize leading-none">{step.action.replace(/_/g, ' ')}</p>
+            <span className={`ml-auto rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-widest ${
               isRunning
-                ? 'bg-amber-100 text-amber-700'
-                : 'bg-emerald-100 text-emerald-700'
+                ? 'bg-blue-50 text-blue-600 animate-pulse'
+                : 'bg-neutral-100 text-neutral-500'
             }`}>
               {isRunning ? 'Running' : 'Done'}
             </span>
           </div>
-          <p className="mt-1 text-sm leading-6 text-neutral-700">{step.thought}</p>
+          <p className="text-sm text-neutral-600 mt-1 leading-relaxed">{step.thought}</p>
         </div>
       </div>
+
       {expanded && (
-        <div className="mt-3 ml-8 space-y-3 rounded-2xl border border-amber-100 bg-white/90 p-4 text-sm text-neutral-700">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400">Tool Input</div>
-            <div className="mt-1 whitespace-pre-wrap break-words rounded-xl bg-neutral-50 px-3 py-2 font-mono text-xs text-neutral-600">
-              {step.actionInput || 'No explicit input'}
+        <div className="mt-3 ml-[28px] space-y-3">
+          {step.actionInput && (
+            <div className="space-y-1.5">
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400">Input</div>
+              <div className="whitespace-pre-wrap break-words rounded-lg border border-neutral-100 bg-neutral-50/50 px-3 py-2 font-mono text-[11px] leading-relaxed text-neutral-600">
+                {step.actionInput}
+              </div>
             </div>
-          </div>
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-400">Tool Output</div>
-            <div className="mt-1 whitespace-pre-wrap break-words rounded-xl bg-neutral-50 px-3 py-2 font-mono text-xs text-neutral-600">
-              {step.observation?.trim() || 'Waiting for tool output...'}
+          )}
+          {step.observation && (
+             <div className="space-y-1.5">
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-neutral-400">Output</div>
+              <div className="whitespace-pre-wrap break-words rounded-lg border border-neutral-100 bg-neutral-50/50 px-3 py-2 font-mono text-[11px] leading-relaxed text-neutral-600 max-h-48 overflow-y-auto">
+                {step.observation.trim()}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>
