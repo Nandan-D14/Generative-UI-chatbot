@@ -257,7 +257,7 @@ querydash/
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/querydash.git
+git clone https://github.com/Nandan-D14/querydash.git
 cd querydash
 ```
 
