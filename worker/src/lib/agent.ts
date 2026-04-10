@@ -395,10 +395,12 @@ function isLiveFactRequest(message: string): boolean {
 }
 
 function isExplicitVisualRequest(message: string): boolean {
-  return /\b(chart|graph|plot|dashboard|table|card|visual|diagram|timeline|form|modal|popup|ui|interface|component|layout|screen|widget)\b/i.test(message);
+  return /(chart|graph|plot|dashboard|table|card|visual|diagram|timeline|form|modal|popup|ui|interface|component|layout|screen|widget|animat|draw|render|paint|design|canvas)/i.test(message);
 }
 
 function isVisualBuildRequest(message: string): boolean {
+  if (isExplicitVisualRequest(message)) return true;
+  
   const normalized = message.toLowerCase();
   const buildIntent = /\b(create|build|design|generate|make|show|craft|draw|render|visualize|prototype|give me)\b/.test(normalized);
   const visualTarget = /\b(form|input|dashboard|chart|graph|table|card|popup|modal|hero|banner|landing page|page|ui|interface|component|widget|screen|layout|diagram|flow|timeline|illustration|visual)\b/.test(normalized);

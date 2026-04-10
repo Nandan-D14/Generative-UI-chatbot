@@ -3,6 +3,7 @@ import { useAuth } from '@clerk/clerk-react';
 import { ChatWindow } from '../components/chat/ChatWindow';
 import { InputBar } from '../components/chat/InputBar';
 import { ChatSidebar } from '../components/chat/ChatSidebar';
+import { deleteChat } from '../lib/api';
 import { useStream } from '../hooks/useStream';
 import { fromUnixish } from '../lib/time';
 import { useSidebar } from '../contexts/SidebarContext';
@@ -44,6 +45,21 @@ export function ChatPage() {
     reset();
   }, [reset]);
 
+  const handleDeleteChat = useCallback(async (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    try {
+      const token = await getToken();
+      if (!token) return;
+      await deleteChat(id, token);
+      setChats(prev => prev.filter(c => c.id !== id));
+      if (activeChat === id) {
+        handleNewChat();
+      }
+    } catch (err) {
+      console.error('Failed to delete chat:', err);
+    }
+  }, [activeChat, handleNewChat, getToken]);
+
   // Load chats on mount
   useEffect(() => {
     loadChats();
@@ -57,10 +73,11 @@ export function ChatPage() {
         activeChat={activeChat}
         onSelectChat={handleSelectChat}
         onNewChat={handleNewChat}
+        onDeleteChat={handleDeleteChat}
       />
     );
     return () => setSidebarSlot(null);
-  }, [chats, activeChat, handleSelectChat, handleNewChat, setSidebarSlot]);
+  }, [chats, activeChat, handleSelectChat, handleNewChat, handleDeleteChat, setSidebarSlot]);
 
   const loadChats = useCallback(async () => {
     const token = await getToken();
