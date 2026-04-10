@@ -9,68 +9,62 @@ type Props = {
 };
 
 export function VisualPanel({ code, renderType, componentName, onSaveArtifact }: Props) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const frameIdRef = useRef(`visual-${crypto.randomUUID()}`);
+  const latestSizeRef = useRef({ width: 0, height: 120 });
 
   useEffect(() => {
-    if (iframeRef.current) renderToIframe(iframeRef.current, code, renderType);
+    if (iframeRef.current) {
+      renderToIframe(iframeRef.current, code, renderType, frameIdRef.current);
+    }
   }, [code, renderType]);
 
   useEffect(() => {
     const iframe = iframeRef.current;
-    if (!iframe) return;
+    const wrapper = wrapperRef.current;
+    if (!iframe || !wrapper) return;
 
-    let cancelled = false;
-    let intervalId: number | null = null;
-    let timeoutIds: number[] = [];
+    const applySize = (width: number, height: number) => {
+      latestSizeRef.current = { width, height };
 
-    const measure = () => {
-      if (cancelled) return;
+      const availableWidth = wrapper.clientWidth || width || 0;
+      const desiredWidth = Math.max(Math.min(width || availableWidth, availableWidth), Math.min(availableWidth, 320));
 
-      try {
-        const doc = iframe.contentDocument;
-        const body = doc?.body;
-        const html = doc?.documentElement;
-        if (!doc || !body || !html) return;
+      iframe.style.width = desiredWidth >= availableWidth - 4 ? '100%' : `${desiredWidth}px`;
+      iframe.style.maxWidth = '100%';
+      iframe.style.height = `${Math.max(height, 120)}px`;
+    };
 
-        const height = Math.max(
-          body.scrollHeight,
-          body.offsetHeight,
-          html.scrollHeight,
-          html.offsetHeight
-        );
-
-        iframe.style.height = `${Math.max(height, 120)}px`;
-      } catch {
-        // Ignore transient cross-document timing issues while the iframe boots.
+    const handleMessage = (event: MessageEvent) => {
+      const payload = event.data;
+      if (
+        !payload ||
+        payload.source !== 'visualmind-iframe-size' ||
+        payload.frameId !== frameIdRef.current
+      ) {
+        return;
       }
+
+      applySize(Number(payload.width) || wrapper.clientWidth || 0, Number(payload.height) || 120);
     };
 
-    const startWatching = () => {
-      measure();
-      timeoutIds = [50, 150, 300, 600, 1000, 1600].map((delay) =>
-        window.setTimeout(measure, delay)
-      );
-      intervalId = window.setInterval(measure, 1200);
-    };
+    const resizeObserver = new ResizeObserver(() => {
+      applySize(latestSizeRef.current.width, latestSizeRef.current.height);
+    });
 
-    const handleLoad = () => {
-      if (cancelled) return;
-      startWatching();
-    };
-
-    iframe.addEventListener('load', handleLoad);
-    measure();
+    window.addEventListener('message', handleMessage);
+    resizeObserver.observe(wrapper);
+    applySize(latestSizeRef.current.width, latestSizeRef.current.height);
 
     return () => {
-      cancelled = true;
-      iframe.removeEventListener('load', handleLoad);
-      timeoutIds.forEach((id) => window.clearTimeout(id));
-      if (intervalId !== null) window.clearInterval(intervalId);
+      window.removeEventListener('message', handleMessage);
+      resizeObserver.disconnect();
     };
   }, [code, renderType]);
 
   return (
-    <div className="group relative mt-6">
+    <div ref={wrapperRef} className="group relative mt-6">
       {onSaveArtifact ? (
         <button
           onClick={onSaveArtifact}
@@ -88,8 +82,8 @@ export function VisualPanel({ code, renderType, componentName, onSaveArtifact }:
         ref={iframeRef}
         sandbox="allow-scripts allow-same-origin"
         scrolling="no"
-        className="block w-full border-0 bg-transparent"
-        style={{ minHeight: '120px', height: '120px', overflow: 'hidden' }}
+        className="block border-0 bg-transparent"
+        style={{ width: '100%', maxWidth: '100%', minHeight: '120px', height: '120px', overflow: 'hidden' }}
       />
     </div>
   );

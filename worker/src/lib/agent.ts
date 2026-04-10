@@ -24,6 +24,8 @@ type AgentOptions = {
   useWebSearch?: boolean;
 };
 
+const MIN_RESPONSE_TEXT_LENGTH = 700;
+
 export async function reactAgent(
   userMessage: string,
   chatHistory: ChatMessage[],
@@ -153,8 +155,8 @@ async function finalizeAgentResponse(
   messages: Array<SystemMessage | HumanMessage | AIMessage | ToolMessage>,
   userMessage: string
 ): Promise<string> {
-  const normalized = normalizeLLMResponse(rawResponse);
-  const parsed = parseStructuredLLMResponse(normalized);
+  let candidate = normalizeLLMResponse(rawResponse);
+  let parsed = parseStructuredLLMResponse(candidate);
 
   if (needsTextOnlyRecovery(userMessage, parsed)) {
     const repaired = await llm.invoke([
@@ -163,21 +165,37 @@ async function finalizeAgentResponse(
       new HumanMessage(buildTextOnlyRecoveryPrompt(userMessage))
     ]);
 
-    return normalizeLLMResponse(repaired.content as string);
+    candidate = normalizeLLMResponse(repaired.content as string);
+    parsed = parseStructuredLLMResponse(candidate);
   }
 
   if (!needsVisualRecovery(userMessage, parsed)) {
-    return normalized;
+    if (!needsLongTextRecovery(parsed)) {
+      return candidate;
+    }
+  } else {
+    const preferredRenderType = prefersReact(userMessage) ? 'react' : 'html';
+    const repaired = await llm.invoke([
+      ...messages,
+      new AIMessage(rawResponse),
+      new HumanMessage(buildVisualRecoveryPrompt(userMessage, preferredRenderType))
+    ]);
+
+    candidate = normalizeLLMResponse(repaired.content as string);
+    parsed = parseStructuredLLMResponse(candidate);
   }
 
-  const preferredRenderType = prefersReact(userMessage) ? 'react' : 'html';
-  const repaired = await llm.invoke([
-    ...messages,
-    new AIMessage(rawResponse),
-    new HumanMessage(buildVisualRecoveryPrompt(userMessage, preferredRenderType))
-  ]);
+  if (needsLongTextRecovery(parsed)) {
+    const repaired = await llm.invoke([
+      ...messages,
+      new AIMessage(candidate),
+      new HumanMessage(buildLongTextRecoveryPrompt(userMessage))
+    ]);
 
-  return normalizeLLMResponse(repaired.content as string);
+    candidate = normalizeLLMResponse(repaired.content as string);
+  }
+
+  return candidate;
 }
 
 async function runPrefetchStep({
@@ -322,6 +340,14 @@ function needsTextOnlyRecovery(userMessage: string, parsed: ReturnType<typeof pa
   return parsed.renderType !== 'none';
 }
 
+function needsLongTextRecovery(parsed: ReturnType<typeof parseStructuredLLMResponse>): boolean {
+  if (!parsed) {
+    return false;
+  }
+
+  return parsed.text.trim().length < MIN_RESPONSE_TEXT_LENGTH;
+}
+
 function buildVisualRecoveryPrompt(userMessage: string, preferredRenderType: 'html' | 'react'): string {
   return [
     'Your previous answer did not provide a usable visual, but the user explicitly asked for one.',
@@ -341,6 +367,16 @@ function buildTextOnlyRecoveryPrompt(userMessage: string): string {
     'Set renderType to "none".',
     'Give a terse factual answer grounded in the tool results and keep text to one short paragraph or at most 2 bullets.',
     'Do not include html or react code unless the user explicitly asked for a chart, card, table, dashboard, or other visual.'
+  ].join('\n');
+}
+
+function buildLongTextRecoveryPrompt(userMessage: string): string {
+  return [
+    'Your previous answer was too short.',
+    `User request: ${userMessage}`,
+    `Keep the existing structured response shape and preserve renderType, code, componentName, props, saveAsComponent, saveAsArtifact, and sources unless a correction is absolutely necessary.`,
+    `Rewrite the text field so it is polished, relevant, and at least ${MIN_RESPONSE_TEXT_LENGTH} characters long.`,
+    'Return ONLY the required outer JSON object.'
   ].join('\n');
 }
 
