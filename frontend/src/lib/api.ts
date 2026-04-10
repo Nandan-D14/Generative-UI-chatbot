@@ -9,3 +9,11 @@ export async function apiFetch(path: string, token: string, options?: RequestIni
     }
   });
 }
+
+export async function deleteChat(chatId: string, token: string) {
+  const res = await apiFetch(`/api/chat/${chatId}`, token, {
+    method: 'DELETE'
+  });
+  if (!res.ok) throw new Error('Failed to delete chat');
+  return res.json();
+}

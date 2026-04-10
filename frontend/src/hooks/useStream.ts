@@ -47,46 +47,62 @@ export function useStream() {
 
     while (true) {
       const { done, value } = await reader.read();
-      if (done) break;
+      
+      if (value) {
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const parsed = JSON.parse(line);
 
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        try {
-          const parsed = JSON.parse(line);
+            if (parsed.type === 'thought-start' && parsed.step) {
+              mergeStep(parsed.step as ReActStep);
+            }
 
-          if (parsed.type === 'thought-start' && parsed.step) {
-            mergeStep(parsed.step as ReActStep);
-          }
+            if (parsed.type === 'thought-complete' && parsed.step) {
+              mergeStep(parsed.step as ReActStep);
+            }
 
-          if (parsed.type === 'thought-complete' && parsed.step) {
-            mergeStep(parsed.step as ReActStep);
-          }
+            if (parsed.type === 'response-start') {
+              setCurrentText('');
+            }
 
-          if (parsed.type === 'response-start') {
-            setCurrentText('');
-          }
+            if (parsed.type === 'text-delta' && typeof parsed.content === 'string') {
+              setCurrentText(prev => prev + parsed.content);
+            }
 
-          if (parsed.type === 'text-delta' && typeof parsed.content === 'string') {
-            setCurrentText(prev => prev + parsed.content);
-          }
+            if (parsed.type === 'response') {
+              const llmResponse: LLMResponse = parseLLMResponsePayload(parsed.content);
+              setCurrentText(llmResponse.text);
+              setCompleteResponse(llmResponse);
+              finalResponse = llmResponse;
+            }
 
-          if (parsed.type === 'response') {
-            const llmResponse: LLMResponse = parseLLMResponsePayload(parsed.content);
-            setCurrentText(llmResponse.text);
-            setCompleteResponse(llmResponse);
-            finalResponse = llmResponse;
-          }
+            if (parsed.type === 'error') {
+              setCurrentText(`Error: ${parsed.message}`);
+              finalResponse = { text: `Error: ${parsed.message}`, renderType: 'none', saveAsArtifact: false, sources: [] };
+              setCompleteResponse(finalResponse);
+            }
+          } catch {}
+        }
+      }
 
-          if (parsed.type === 'error') {
-            setCurrentText(`Error: ${parsed.message}`);
-            finalResponse = { text: `Error: ${parsed.message}`, renderType: 'none' };
-            setCompleteResponse(finalResponse);
-          }
-        } catch {}
+      if (done) {
+        if (buffer.trim()) {
+          try {
+            const parsed = JSON.parse(buffer);
+            if (parsed.type === 'response') {
+              const llmResponse: LLMResponse = parseLLMResponsePayload(parsed.content);
+              setCurrentText(llmResponse.text);
+              setCompleteResponse(llmResponse);
+              finalResponse = llmResponse;
+            }
+          } catch {}
+        }
+        break;
       }
     }
 

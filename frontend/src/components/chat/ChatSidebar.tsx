@@ -9,9 +9,10 @@ type Props = {
   activeChat: string | null;
   onSelectChat: (id: string) => void;
   onNewChat: () => void;
+  onDeleteChat?: (id: string) => void;
 };
 
-export function ChatSidebar({ chats, activeChat, onSelectChat, onNewChat }: Props) {
+export function ChatSidebar({ chats, activeChat, onSelectChat, onNewChat, onDeleteChat }: Props) {
   return (
     <div className="flex w-full flex-col h-full bg-transparent">
       <div className="px-4 py-2 shrink-0">

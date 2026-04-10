@@ -47,9 +47,7 @@ export async function generateEmbeddings(
     body: JSON.stringify({
       input,
       model: env.LLM_EMBED_MODEL,
-      input_type: inputType,
-      encoding_format: 'float',
-      truncate: 'END'
+      encoding_format: 'float'
     })
   });
 
