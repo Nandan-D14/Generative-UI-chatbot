@@ -1,5 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { SignedIn, SignedOut, SignIn } from '@clerk/clerk-react';
+import { useAuth } from '@clerk/clerk-react';
 import { SidebarProvider, useSidebar } from './contexts/SidebarContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Sidebar } from './components/shared/Sidebar';
@@ -9,6 +9,7 @@ import { KnowledgeBasePage } from './pages/KnowledgeBase';
 import { ArtifactsPage } from './pages/Artifacts';
 import { RegistryPage } from './pages/Registry';
 import { SettingsPage } from './pages/Settings';
+import { CustomSignIn } from './components/auth/CustomSignIn';
 
 const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '';
 
@@ -48,66 +49,41 @@ function Step({ num, title, detail }: { num: number; title: string; detail: stri
 export default function App() {
   if (!publishableKey) return <SetupScreen />;
 
+  const { isLoaded, isSignedIn } = useAuth();
+
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-neutral-900 flex items-center justify-center">
+        <div className="flex items-center gap-3 text-gray-400">
+          <div className="w-5 h-5 border-2 border-gray-600 border-t-blue-500 rounded-full animate-spin" />
+          <span>Loading...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // Not signed in? Show sign-in page
+  if (!isSignedIn) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
+        <CustomSignIn />
+      </div>
+    );
+  }
+
   return (
     <ThemeProvider>
       <SidebarProvider>
         <Routes>
-          <Route path="/" element={<AuthLanding />} />
-          <Route path="/sign-in/*" element={<AuthLanding />} />
-          <Route path="/chat" element={
-            <SignedIn>
-              <AppLayout>
-                <ChatPage />
-              </AppLayout>
-            </SignedIn>
-          } />
-          <Route path="/kb" element={
-            <SignedIn>
-              <AppLayout>
-                <KnowledgeBasePage />
-              </AppLayout>
-            </SignedIn>
-          } />
-          <Route path="/artifacts" element={
-            <SignedIn>
-              <AppLayout>
-                <ArtifactsPage />
-              </AppLayout>
-            </SignedIn>
-          } />
-          <Route path="/registry" element={
-            <SignedIn>
-              <AppLayout>
-                <RegistryPage />
-              </AppLayout>
-            </SignedIn>
-          } />
-          <Route path="/settings" element={
-            <SignedIn>
-              <AppLayout>
-                <SettingsPage />
-              </AppLayout>
-            </SignedIn>
-          } />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/chat" element={<AppLayout><ChatPage /></AppLayout>} />
+          <Route path="/kb" element={<AppLayout><KnowledgeBasePage /></AppLayout>} />
+          <Route path="/artifacts" element={<AppLayout><ArtifactsPage /></AppLayout>} />
+          <Route path="/registry" element={<AppLayout><RegistryPage /></AppLayout>} />
+          <Route path="/settings" element={<AppLayout><SettingsPage /></AppLayout>} />
+          <Route path="*" element={<Navigate to="/chat" replace />} />
         </Routes>
       </SidebarProvider>
     </ThemeProvider>
-  );
-}
-
-function AuthLanding() {
-  return (
-    <>
-      <SignedIn>
-        <Navigate to="/chat" replace />
-      </SignedIn>
-      <SignedOut>
-        <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
-          <SignIn routing="path" path="/sign-in" fallbackRedirectUrl="/chat" forceRedirectUrl="/chat" />
-        </div>
-      </SignedOut>
-    </>
   );
 }
 
