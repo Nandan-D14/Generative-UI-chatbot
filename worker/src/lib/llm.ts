@@ -17,9 +17,9 @@ type EmbeddingsResponse = {
 export function createChatModel(env: Env) {
   return new ChatOpenAI({
     apiKey: env.LLM_API_KEY,
-    model: env.LLM_CHAT_MODEL,
+    model: env.LLM_CHAT_MODEL.toLowerCase(),
     temperature: 0.3,
-    maxTokens: 16384,
+    maxCompletionTokens: 16384,
     configuration: { baseURL: env.LLM_BASE_URL }
   });
 }

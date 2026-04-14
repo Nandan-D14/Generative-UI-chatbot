@@ -272,3 +272,67 @@ body {
 .vm-markdown--inverse th {
   border-bottom-color: rgba(191, 219, 254, 0.14);
 }
+
+/* ============================================
+   Clerk Auth Form - Restore browser defaults
+   Only apply to auth pages, not the main app
+   ============================================ */
+
+/* Only reset Clerk elements on sign-in/sign-up pages */
+body:has(.cl-rootBox) .cl-rootBox,
+body:has(.cl-card) .cl-card {
+  font-family: system-ui, -apple-system, sans-serif !important;
+}
+
+.cl-rootBox {
+  width: 100%;
+  max-width: 28rem;
+}
+
+.cl-card {
+  width: 100%;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: #ffffff;
+  padding: 2rem;
+}
+
+/* Clerk form elements */
+.cl-formFieldInput {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background: #ffffff;
+  color: #111827;
+  font-size: 0.875rem;
+}
+
+.cl-formButtonPrimary {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.cl-headerTitle {
+  color: #111827;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.cl-headerSubtitle {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.cl-formFieldLabel {
+  color: #374151;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
