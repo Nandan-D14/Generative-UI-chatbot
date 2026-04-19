@@ -28,6 +28,9 @@ export function TopBar() {
             )}
           </svg>
         </button>
+      </div>
+
+      <div className="flex items-center gap-2">
         <button
           onClick={toggleTheme}
           className="p-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-neutral-700 transition-colors"
@@ -65,8 +68,8 @@ export function TopBar() {
             </svg>
           )}
         </button>
+        <UserButton afterSignOutUrl="/sign-in" />
       </div>
-      <UserButton afterSignOutUrl="/sign-in" />
     </div>
   );
 }
