@@ -1,14 +1,32 @@
 import { useEffect, useRef, useState, KeyboardEvent } from 'react';
 
-type Props = {
-  onSend: (message: string, options: { useWebSearch: boolean }) => void;
-  isLoading: boolean;
+type InputDocument = {
+  id: string;
+  name: string;
+  status: 'processing' | 'indexed' | 'failed';
 };
 
-export function InputBar({ onSend, isLoading }: Props) {
+type Props = {
+  onSend: (message: string, options: {
+    useWebSearch: boolean;
+    selectedDocumentIds: string[];
+    selectedDocumentNames: string[];
+  }) => void;
+  isLoading: boolean;
+  documents: InputDocument[];
+};
+
+export function InputBar({ onSend, isLoading, documents }: Props) {
   const [input, setInput] = useState('');
   const [useWebSearch, setUseWebSearch] = useState(false);
+  const [isKbMenuOpen, setIsKbMenuOpen] = useState(false);
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const kbMenuRef = useRef<HTMLDivElement>(null);
+
+  const indexedDocuments = documents.filter((doc) => doc.status === 'indexed');
+  const selectedDocuments = indexedDocuments.filter((doc) => selectedDocumentIds.includes(doc.id));
+  const selectedDocumentNames = selectedDocuments.map((doc) => doc.name);
 
   useEffect(() => {
     if (!textareaRef.current) return;
@@ -16,9 +34,42 @@ export function InputBar({ onSend, isLoading }: Props) {
     textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 220)}px`;
   }, [input]);
 
+  useEffect(() => {
+    const validIds = new Set(indexedDocuments.map((doc) => doc.id));
+    setSelectedDocumentIds((current) => current.filter((id) => validIds.has(id)));
+  }, [documents]);
+
+  useEffect(() => {
+    const onClickOutside = (event: MouseEvent) => {
+      if (!kbMenuRef.current) return;
+      if (event.target instanceof Node && kbMenuRef.current.contains(event.target)) {
+        return;
+      }
+      setIsKbMenuOpen(false);
+    };
+
+    if (isKbMenuOpen) {
+      window.addEventListener('mousedown', onClickOutside);
+    }
+
+    return () => window.removeEventListener('mousedown', onClickOutside);
+  }, [isKbMenuOpen]);
+
+  const toggleDocument = (id: string) => {
+    setSelectedDocumentIds((current) => (
+      current.includes(id)
+        ? current.filter((value) => value !== id)
+        : [...current, id]
+    ));
+  };
+
   const handleSend = () => {
     if (!input.trim() || isLoading) return;
-    onSend(input.trim(), { useWebSearch });
+    onSend(input.trim(), {
+      useWebSearch,
+      selectedDocumentIds,
+      selectedDocumentNames
+    });
     setInput('');
   };
 
@@ -34,7 +85,7 @@ export function InputBar({ onSend, isLoading }: Props) {
       <div className="mx-auto max-w-3xl relative">
         <div className="relative rounded-[26px] bg-neutral-50 dark:bg-neutral-800 border border-neutral-200/80 dark:border-neutral-700 shadow-sm focus-within:border-neutral-300 dark:focus-within:border-neutral-600 focus-within:bg-white dark:focus-within:bg-neutral-800 focus-within:shadow-md transition-all duration-200 flex flex-row items-end px-2 py-2">
           <div className="flex-1 max-w-full">
-            <div className="px-4 pt-2">
+            <div className="px-4 pt-2 flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => setUseWebSearch((value) => !value)}
@@ -48,6 +99,80 @@ export function InputBar({ onSend, isLoading }: Props) {
                 <span className={`inline-flex h-2 w-2 rounded-full ${useWebSearch ? 'bg-blue-500' : 'bg-neutral-300 dark:bg-neutral-600'}`} />
                 Web Search
               </button>
+              <div className="relative" ref={kbMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsKbMenuOpen((value) => !value)}
+                  disabled={isLoading}
+                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] transition-colors disabled:opacity-40 ${
+                    selectedDocumentIds.length > 0
+                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                      : 'border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:border-neutral-300 dark:hover:border-neutral-600 hover:text-neutral-700 dark:hover:text-neutral-300'
+                  }`}
+                >
+                  <span className={`inline-flex h-2 w-2 rounded-full ${selectedDocumentIds.length > 0 ? 'bg-emerald-500' : 'bg-neutral-300 dark:bg-neutral-600'}`} />
+                  KB Files {selectedDocumentIds.length > 0 ? `(${selectedDocumentIds.length})` : ''}
+                </button>
+                {isKbMenuOpen && (
+                  <div className="absolute left-0 top-full z-20 mt-2 w-[min(360px,75vw)] rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-500 dark:text-neutral-400 mb-2">
+                      Import From Knowledge Base
+                    </p>
+                    {!indexedDocuments.length ? (
+                      <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                        No indexed files available yet.
+                      </p>
+                    ) : (
+                      <div className="max-h-48 overflow-y-auto space-y-1 pr-1">
+                        {indexedDocuments.map((doc) => {
+                          const selected = selectedDocumentIds.includes(doc.id);
+
+                          return (
+                            <label
+                              key={doc.id}
+                              className={`flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors ${
+                                selected
+                                  ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
+                                  : 'hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                onChange={() => toggleDocument(doc.id)}
+                                className="h-4 w-4 rounded border-neutral-300 text-emerald-600 focus:ring-emerald-500"
+                              />
+                              <span className="truncate">{doc.name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {selectedDocumentIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDocumentIds([])}
+                        className="mt-3 text-xs font-semibold uppercase tracking-[0.14em] text-neutral-500 dark:text-neutral-400 hover:text-neutral-800 dark:hover:text-neutral-200"
+                      >
+                        Clear Selection
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+              {selectedDocumentNames.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {selectedDocuments.map((doc) => (
+                    <span
+                      key={doc.id}
+                      className="inline-flex max-w-[160px] truncate items-center rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-2 py-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-300"
+                      title={doc.name}
+                    >
+                      {doc.name}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <textarea
               ref={textareaRef}

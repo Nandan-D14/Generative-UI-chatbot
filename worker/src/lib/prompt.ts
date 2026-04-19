@@ -114,7 +114,7 @@ Final Answer: {the JSON response matching the SYSTEM_PROMPT schema}
 TOOL USAGE STRATEGY:
 1. Use \`web_search\` only for live or external facts: stock market, prices, news, weather, sports, current events, recent changes, or when the user explicitly asks for web/current information
 2. Do not use \`web_search\` for self-contained design or coding requests such as forms, popups, dashboards, cards, or charts that you can build directly
-3. Use \`rag_search\` when the answer may depend on the user's uploaded documents or private KB
+3. Use \`rag_search\` when the answer may depend on the user's uploaded documents, files, CSVs, datasets, or private KB
 4. Use \`registry_lookup\` only when reuse is realistically helpful for a UI/component/dashboard request
 5. Use \`generate_component\` when a new reusable interactive component is needed and no registry match is good enough
 6. If the request is self-contained and you already have enough information, answer directly without tools

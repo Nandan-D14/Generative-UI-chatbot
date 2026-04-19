@@ -9,10 +9,15 @@ export function chatRoutes(app: Hono<AppEnv>) {
 
   router.post('/stream', async (c) => {
     const userId = c.get('userId') as string;
-    const { chatId, message, history, useWebSearch } = await c.req.json();
+    const { chatId, message, history, useWebSearch, selectedDocumentIds } = await c.req.json();
+
+    const selectedIds = Array.isArray(selectedDocumentIds)
+      ? selectedDocumentIds.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      : [];
 
     const stream = await streamReActResponse(message, history, userId, c.env, {
-      useWebSearch: Boolean(useWebSearch)
+      useWebSearch: Boolean(useWebSearch),
+      selectedDocumentIds: selectedIds
     });
 
     return c.newResponse(stream, {

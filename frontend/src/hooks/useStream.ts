@@ -13,7 +13,7 @@ export function useStream() {
     chatId: string,
     history: Array<{ role: string; content: string }>,
     token: string,
-    options: { useWebSearch: boolean }
+    options: { useWebSearch: boolean; selectedDocumentIds: string[] }
   ) => {
     setIsStreaming(true);
     setCurrentText('');
@@ -27,7 +27,13 @@ export function useStream() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ chatId, message, history, useWebSearch: options.useWebSearch })
+        body: JSON.stringify({
+          chatId,
+          message,
+          history,
+          useWebSearch: options.useWebSearch,
+          selectedDocumentIds: options.selectedDocumentIds
+        })
       });
 
       if (!response.ok || !response.body) {

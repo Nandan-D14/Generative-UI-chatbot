@@ -7,6 +7,7 @@ import { deleteChat } from '../lib/api';
 import { useStream } from '../hooks/useStream';
 import { fromUnixish } from '../lib/time';
 import { useSidebar } from '../contexts/SidebarContext';
+import type { KnowledgeBaseDocument } from '../hooks/useKnowledgeBase';
 import type { LLMResponse, ReActStep } from '../../../shared/types';
 
 type Message = {
@@ -29,6 +30,7 @@ export function ChatPage() {
   const { setSidebarSlot } = useSidebar();
   const [messages, setMessages] = useState<Message[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
+  const [kbDocuments, setKbDocuments] = useState<KnowledgeBaseDocument[]>([]);
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -64,6 +66,7 @@ export function ChatPage() {
   // Load chats on mount
   useEffect(() => {
     loadChats();
+    loadKbDocuments();
   }, []);
 
   // Update sidebar slot with the chat list
@@ -101,6 +104,26 @@ export function ChatPage() {
     } catch (err) {
       console.error('Failed to load chats:', err);
       setApiError('The worker API is unavailable. Start the worker on port 8787 and verify worker/.dev.vars contains real secrets.');
+    }
+  }, [getToken]);
+
+  const loadKbDocuments = useCallback(async () => {
+    const token = await getToken();
+    if (!token) return;
+
+    try {
+      const res = await fetch('/api/kb/documents', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (!res.ok) {
+        return;
+      }
+
+      const data = await res.json();
+      setKbDocuments(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('Failed to load KB documents for chat input:', err);
     }
   }, [getToken]);
 
@@ -189,7 +212,11 @@ export function ChatPage() {
     }
   }, [getToken]);
 
-  const handleSend = async (message: string, options: { useWebSearch: boolean }) => {
+  const handleSend = async (message: string, options: {
+    useWebSearch: boolean;
+    selectedDocumentIds: string[];
+    selectedDocumentNames: string[];
+  }) => {
     const token = await getToken();
     if (!token) {
       setApiError('Authentication token unavailable. Sign in again.');
@@ -240,7 +267,10 @@ export function ChatPage() {
     // Start streaming
     let streamResult: Awaited<ReturnType<typeof startStream>>;
     try {
-      streamResult = await startStream(message, chatId, history, token, options);
+      streamResult = await startStream(message, chatId, history, token, {
+        useWebSearch: options.useWebSearch,
+        selectedDocumentIds: options.selectedDocumentIds
+      });
     } catch (error) {
       setApiError((error as Error).message || 'Unable to start chat stream.');
       return;
@@ -295,7 +325,11 @@ export function ChatPage() {
     <div className="flex h-full min-h-0 transition-colors duration-300">
       <div className="flex min-w-0 flex-1 flex-col h-full bg-white dark:bg-neutral-900 shadow-sm overflow-hidden transition-colors duration-300 border-t border-neutral-200/50 dark:border-neutral-800">
         <ChatWindow messages={displayMessages} errorMessage={apiError} />
-        <InputBar onSend={handleSend} isLoading={isStreaming || isLoadingMessages} />
+        <InputBar
+          onSend={handleSend}
+          isLoading={isStreaming || isLoadingMessages}
+          documents={kbDocuments}
+        />
       </div>
     </div>
   );

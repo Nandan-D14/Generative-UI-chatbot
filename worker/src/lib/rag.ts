@@ -9,6 +9,7 @@ export async function streamReActResponse(
   env: Env,
   options: {
     useWebSearch?: boolean;
+    selectedDocumentIds?: string[];
   } = {}
 ): Promise<ReadableStream> {
   return new ReadableStream({

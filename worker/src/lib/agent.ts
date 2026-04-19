@@ -22,6 +22,7 @@ type AgentCallbacks = {
 
 type AgentOptions = {
   useWebSearch?: boolean;
+  selectedDocumentIds?: string[];
 };
 
 const MIN_RESPONSE_TEXT_LENGTH = 10;
@@ -34,7 +35,8 @@ export async function reactAgent(
   callbacks: AgentCallbacks = {},
   options: AgentOptions = {}
 ): Promise<AgentResult> {
-  const ragTool = new RAGTool(env.VECTORIZE, env, userId);
+  const selectedDocumentIds = normalizeSelectedDocumentIds(options.selectedDocumentIds);
+  const ragTool = new RAGTool(env.VECTORIZE, env, userId, undefined, selectedDocumentIds);
   const registryTool = new RegistryLookupTool(env.DB, userId);
   const componentGenTool = new ComponentGenTool(env.DB, userId);
   const allowWebSearch = Boolean(options.useWebSearch && env.SEARCH_API_KEY);
@@ -54,7 +56,8 @@ export async function reactAgent(
       buildRuntimeInstructions(userMessage, {
         allowWebSearch,
         webSearchRequested: Boolean(options.useWebSearch),
-        hasSearchKey: Boolean(env.SEARCH_API_KEY)
+        hasSearchKey: Boolean(env.SEARCH_API_KEY),
+        selectedDocumentCount: selectedDocumentIds.length
       }),
       `USER ID: ${userId}`,
       `AVAILABLE TOOLS: ${tools.map((tool) => `- ${tool.name}: ${tool.description}`).join('\n')}`
@@ -78,6 +81,24 @@ export async function reactAgent(
       tool: webSearchTool,
       stepId: 'web-search-prefetch',
       thought: 'The user enabled web search and the request needs current or external information, so I should fetch live context first.',
+      input: userMessage,
+      messages,
+      steps,
+      callbacks
+    });
+  }
+
+  const shouldRunRagPrefetch =
+    selectedDocumentIds.length > 0 ||
+    (!isVisualBuildRequest(userMessage) && shouldPrefetchRag(userMessage));
+
+  if (shouldRunRagPrefetch) {
+    await runPrefetchStep({
+      tool: ragTool,
+      stepId: 'rag-prefetch',
+      thought: selectedDocumentIds.length > 0
+        ? 'The user attached specific Knowledge Base files, so I should retrieve those private documents first.'
+        : 'The user appears to be asking about uploaded files or knowledge-base data, so I should retrieve private context first.',
       input: userMessage,
       messages,
       steps,
@@ -264,9 +285,16 @@ function buildRuntimeInstructions(
     allowWebSearch: boolean;
     webSearchRequested: boolean;
     hasSearchKey: boolean;
+    selectedDocumentCount: number;
   }
 ): string {
   const instructions: string[] = [];
+
+  if (options.selectedDocumentCount > 0) {
+    instructions.push(
+      `USER SETTING: The user selected ${options.selectedDocumentCount} Knowledge Base file(s) for this message. Prioritize those files when using rag_search.`
+    );
+  }
 
   if (isVisualBuildRequest(userMessage)) {
     instructions.push(
@@ -390,6 +418,10 @@ function shouldPrefetchWebSearch(message: string): boolean {
   );
 }
 
+function shouldPrefetchRag(message: string): boolean {
+  return /\b(upload|uploaded|document|documents|doc|docs|file|files|csv|spreadsheet|knowledge\s*base|knowledge-base|kb|dataset|datasets|row|rows|column|columns)\b/i.test(message);
+}
+
 function isLiveFactRequest(message: string): boolean {
   return /\b(current|latest|today|now|recent|live|exchange rate|forex|currency|usd|inr|dollar|rupee|stock|stocks|share price|price|pricing|weather|forecast|news|headline|trending|market|score|sports)\b/i.test(message);
 }
@@ -410,4 +442,25 @@ function isVisualBuildRequest(message: string): boolean {
 
 function prefersReact(message: string): boolean {
   return /\b(form|input|button|click|toggle|tab|filter|select|dropdown|date picker|datepicker|modal|popup|wizard|stepper|interactive|animation|animated|celebrate|birthday|state)\b/i.test(message);
+}
+
+function normalizeSelectedDocumentIds(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const normalized: string[] = [];
+
+  for (const entry of value) {
+    if (typeof entry !== 'string') continue;
+
+    const id = entry.trim();
+    if (!id || seen.has(id)) continue;
+
+    seen.add(id);
+    normalized.push(id);
+  }
+
+  return normalized;
 }
