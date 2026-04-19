@@ -57,7 +57,7 @@ export function useKnowledgeBase() {
         headers: { 'Authorization': `Bearer ${token}` },
         body: formData
       });
-      const payload = await res.json().catch(() => ({})) as Partial<UploadResult> & { error?: string };
+      const payload = await readResponsePayload<Partial<UploadResult> & { error?: string }>(res);
 
       await fetchDocuments(token);
 
@@ -86,7 +86,7 @@ export function useKnowledgeBase() {
     });
 
     if (!res.ok) {
-      const payload = await res.json().catch(() => ({})) as { error?: string };
+      const payload = await readResponsePayload<{ error?: string }>(res);
       const message = payload.error || 'Delete failed.';
       setError(message);
       throw new Error(message);
@@ -96,4 +96,18 @@ export function useKnowledgeBase() {
   }, [fetchDocuments]);
 
   return { documents, isUploading, isLoading, error, fetchDocuments, uploadDocument, deleteDocument };
+}
+
+async function readResponsePayload<T extends Record<string, unknown>>(res: Response): Promise<T> {
+  const text = await res.text();
+
+  if (!text) {
+    return {} as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return { error: text } as unknown as T;
+  }
 }

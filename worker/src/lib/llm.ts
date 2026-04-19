@@ -12,6 +12,16 @@ type EmbeddingsResponse = {
   error?: {
     message?: string;
   };
+  detail?: string;
+  title?: string;
+  status?: number;
+};
+
+type EmbeddingsRequestBody = {
+  input: string[];
+  model: string;
+  input_type?: EmbeddingInputType;
+  truncate?: 'NONE' | 'START' | 'END';
 };
 
 export function createChatModel(env: Env) {
@@ -38,23 +48,42 @@ export async function generateEmbeddings(
   inputType: EmbeddingInputType,
   env: Env
 ): Promise<number[][]> {
+  const expectedDimensions = Number(env.LLM_EMBED_DIMENSIONS);
+
+  if (!Number.isFinite(expectedDimensions) || expectedDimensions <= 0) {
+    throw new Error(`Invalid embedding dimension configuration: ${env.LLM_EMBED_DIMENSIONS}`);
+  }
+
+  const body: EmbeddingsRequestBody = {
+    input,
+    model: env.LLM_EMBED_MODEL
+  };
+
+  console.log(`[LLM API] Making request to: ${env.LLM_BASE_URL}/embeddings`);
+  console.log(`[LLM API] Request Body:`, JSON.stringify(body).slice(0, 200) + '...');
+
+  if (usesNvidiaEmbeddings(env)) {
+    body.input_type = inputType;
+    body.truncate = 'END';
+  }
+
   const response = await fetch(`${env.LLM_BASE_URL}/embeddings`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${env.LLM_API_KEY}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      input,
-      model: env.LLM_EMBED_MODEL,
-      encoding_format: 'float'
-    })
+    body: JSON.stringify(body)
   });
 
-  const payload = (await response.json()) as EmbeddingsResponse;
+  const payload = await readEmbeddingsResponse(response);
 
   if (!response.ok) {
-    const message = payload.error?.message || `Embedding request failed with status ${response.status}`;
+    const providerMessage = payload.error?.message || payload.detail || payload.title;
+    const message = providerMessage
+      ? `Embedding request failed with status ${response.status}: ${providerMessage}`
+      : `Embedding request failed with status ${response.status}`;
+    console.error('[LLM API] Error:', message);
     throw new Error(message);
   }
 
@@ -62,15 +91,45 @@ export async function generateEmbeddings(
     throw new Error('Embedding response was malformed.');
   }
 
-  const vectors = payload.data.map((item) => item.embedding);
+  return payload.data.map((item) => normalizeEmbeddingDimensions(item.embedding, expectedDimensions, env));
+}
 
-  for (const vector of vectors) {
-    if (!Array.isArray(vector) || vector.length !== env.LLM_EMBED_DIMENSIONS) {
-      throw new Error(
-        `Embedding dimension mismatch. Expected ${env.LLM_EMBED_DIMENSIONS}, got ${vector?.length ?? 'unknown'}.`
-      );
-    }
+function usesNvidiaEmbeddings(env: Env): boolean {
+  return env.LLM_BASE_URL.includes('integrate.api.nvidia.com') || env.LLM_EMBED_MODEL.startsWith('nvidia/');
+}
+
+async function readEmbeddingsResponse(response: Response): Promise<EmbeddingsResponse> {
+  const text = await response.text();
+
+  if (!text) {
+    return {};
   }
 
-  return vectors;
+  try {
+    return JSON.parse(text) as EmbeddingsResponse;
+  } catch {
+    return { error: { message: text } };
+  }
+}
+
+function normalizeEmbeddingDimensions(vector: number[], expectedDimensions: number, env: Env): number[] {
+  if (!Array.isArray(vector)) {
+    throw new Error('Embedding response was malformed.');
+  }
+
+  if (vector.length === expectedDimensions) {
+    return vector;
+  }
+
+  if (usesNvidiaEmbeddings(env) && vector.length > expectedDimensions) {
+    console.warn(
+      `[LLM API] Oversized embedding from ${env.LLM_EMBED_MODEL}. Truncating from ${vector.length} to ${expectedDimensions}.`
+    );
+    return vector.slice(0, expectedDimensions);
+  }
+
+  console.error(
+    `[LLM API] Dimension mismatch for model ${env.LLM_EMBED_MODEL}. Expected ${expectedDimensions}, got ${vector.length}.`
+  );
+  throw new Error(`Embedding dimension mismatch. Expected ${expectedDimensions}, got ${vector.length}.`);
 }

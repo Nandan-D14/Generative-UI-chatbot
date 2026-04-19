@@ -44,22 +44,23 @@ export function kbRoutes(app: Hono<AppEnv>) {
     const id = crypto.randomUUID();
     const now = Date.now();
 
-    await c.env.DB.prepare(
-      'INSERT INTO documents (id, user_id, name, type, size, content, chunk_count, status, error_message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-    ).bind(id, userId, file.name, file.type || kind, file.size, null, 0, 'processing', null, now).run();
+    try {
+      await c.env.DB.prepare(
+        'INSERT INTO documents (id, user_id, name, type, size, content, chunk_count, status, error_message, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      ).bind(id, userId, file.name, file.type || kind, file.size, null, 0, 'processing', null, now).run();
+    } catch (error) {
+      console.error('KB document record creation failed:', error);
+      return c.json({ error: 'Failed to create the knowledge-base document record.' }, 500);
+    }
 
     try {
       const result = await processDocument(id, userId, file, c.env);
       return c.json({ id, status: 'indexed', chunkCount: result.chunkCount });
     } catch (error) {
-      const message = error instanceof DocumentProcessingError
-        ? error.message
-        : 'Document processing failed.';
-      const statusCode: 422 | 500 = error instanceof DocumentProcessingError ? 422 : 500;
+      const message = getDocumentProcessingErrorMessage(error);
+      const statusCode: 422 | 502 = error instanceof DocumentProcessingError ? 422 : 502;
 
-      if (!(error instanceof DocumentProcessingError)) {
-        console.error('KB upload failed:', error);
-      }
+      console.error('KB upload failed:', error);
 
       await markDocumentFailed(c.env.DB, id, message);
 
@@ -94,9 +95,10 @@ export function kbRoutes(app: Hono<AppEnv>) {
 
     const chunkCount = Number((doc as { chunk_count?: unknown }).chunk_count ?? 0);
     const vectorIds = buildVectorIds(docId, chunkCount);
+    const vectorize = c.env.VECTORIZE as VectorizeIndex | undefined;
 
-    if (vectorIds.length) {
-      await c.env.VECTORIZE.deleteByIds(vectorIds);
+    if (vectorize && vectorIds.length) {
+      await vectorize.deleteByIds(vectorIds);
     }
 
     await c.env.DB.prepare('DELETE FROM documents WHERE id = ?').bind(docId).run();
@@ -110,39 +112,47 @@ export function kbRoutes(app: Hono<AppEnv>) {
 async function processDocument(docId: string, userId: string, file: File, env: Env): Promise<{ chunkCount: number }> {
   const extracted = await extractDocumentContent(file);
   const chunks = chunkText(extracted.content, CHUNK_SIZE, CHUNK_OVERLAP);
+  const vectorize = env.VECTORIZE as VectorizeIndex | undefined;
+  const canWriteVectors = hasVectorizeWriteMethod(vectorize);
 
   enforceInlineProcessingLimits(extracted, chunks.length);
 
   const insertedVectorIds: string[] = [];
 
   try {
-    for (let offset = 0; offset < chunks.length; offset += EMBEDDING_BATCH_SIZE) {
-      const chunkBatch = chunks.slice(offset, offset + EMBEDDING_BATCH_SIZE);
-      const embeddings = await generateEmbeddings(chunkBatch, 'passage', env);
-      const vectors = embeddings.map((values, index) => ({
-        id: `${docId}-${offset + index}`,
-        values,
-        metadata: {
-          userId,
-          docId,
-          docName: file.name,
-          chunk: chunkBatch[index]
-        }
-      }));
+    if (canWriteVectors && vectorize) {
+      for (let offset = 0; offset < chunks.length; offset += EMBEDDING_BATCH_SIZE) {
+        const chunkBatch = chunks.slice(offset, offset + EMBEDDING_BATCH_SIZE);
+        const embeddings = await generateEmbeddings(chunkBatch, 'passage', env);
+        const vectors = embeddings.map((values, index) => ({
+          id: `${docId}-${offset + index}`,
+          values,
+          metadata: {
+            userId,
+            docId,
+            docName: file.name,
+            chunk: chunkBatch[index]
+          }
+        }));
 
-      await env.VECTORIZE.upsert(vectors);
-      insertedVectorIds.push(...vectors.map((vector) => vector.id));
+        await writeVectors(vectorize, vectors);
+        insertedVectorIds.push(...vectors.map((vector) => vector.id));
+      }
+    } else {
+      console.warn('[KB] Vectorize binding is unavailable. Storing extracted content without vector embeddings.');
     }
+
+    const persistedChunkCount = canWriteVectors ? chunks.length : 0;
 
     await env.DB.prepare(
       'UPDATE documents SET content = ?, status = ?, chunk_count = ?, error_message = ? WHERE id = ?'
-    ).bind(extracted.content, 'indexed', chunks.length, null, docId).run();
+    ).bind(extracted.content, 'indexed', persistedChunkCount, null, docId).run();
 
-    return { chunkCount: chunks.length };
+    return { chunkCount: persistedChunkCount };
   } catch (error) {
-    if (insertedVectorIds.length) {
+    if (vectorize && insertedVectorIds.length) {
       try {
-        await env.VECTORIZE.deleteByIds(insertedVectorIds);
+        await vectorize.deleteByIds(insertedVectorIds);
       } catch (cleanupError) {
         console.error('Failed to clean up KB vectors after ingestion error:', cleanupError);
       }
@@ -152,9 +162,52 @@ async function processDocument(docId: string, userId: string, file: File, env: E
   }
 }
 
+async function writeVectors(index: VectorizeIndex, vectors: VectorizeVector[]): Promise<void> {
+  const writer = index as {
+    upsert?: (items: VectorizeVector[]) => Promise<unknown>;
+    insert?: (items: VectorizeVector[]) => Promise<unknown>;
+  };
+
+  if (typeof writer.upsert === 'function') {
+    await writer.upsert(vectors);
+    return;
+  }
+
+  if (typeof writer.insert === 'function') {
+    await writer.insert(vectors);
+    return;
+  }
+
+  throw new Error('Vectorize binding does not support write operations in this runtime.');
+}
+
+function hasVectorizeWriteMethod(index: VectorizeIndex | undefined): boolean {
+  if (!index) {
+    return false;
+  }
+
+  const writer = index as {
+    upsert?: unknown;
+    insert?: unknown;
+  };
+
+  return typeof writer.upsert === 'function' || typeof writer.insert === 'function';
+}
+
 async function markDocumentFailed(db: D1Database, docId: string, errorMessage: string) {
   await db.prepare(
     'UPDATE documents SET status = ?, error_message = ? WHERE id = ?'
   ).bind('failed', errorMessage, docId).run();
 }
 
+function getDocumentProcessingErrorMessage(error: unknown): string {
+  if (error instanceof DocumentProcessingError) {
+    return error.message;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return 'Document processing failed.';
+}

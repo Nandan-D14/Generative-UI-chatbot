@@ -120,33 +120,53 @@ export function ensureSchema(env: Env): Promise<void> {
   return schemaInitPromise;
 }
 
+type TableColumnInfo = {
+  name?: unknown;
+  notnull?: unknown;
+};
+
 async function getExistingColumns(env: Env, tableName: string): Promise<Set<string>> {
+  const tableInfo = await getTableInfo(env, tableName);
+  return new Set(
+    tableInfo
+      .map((column) => column.name)
+      .filter((name): name is string => typeof name === 'string')
+  );
+}
+
+async function getTableInfo(env: Env, tableName: string): Promise<TableColumnInfo[]> {
   try {
     const result = await env.DB.prepare(`PRAGMA table_info(${tableName})`).all();
-    return new Set(
-      (result.results ?? [])
-        .map((column) => (column as { name?: unknown }).name)
-        .filter((name): name is string => typeof name === 'string')
-    );
+    return (result.results ?? []) as TableColumnInfo[];
   } catch {
-    return new Set();
+    return [];
   }
 }
 
 async function ensureDocumentsSchema(env: Env): Promise<void> {
-  const columns = await getExistingColumns(env, 'documents');
+  const tableInfo = await getTableInfo(env, 'documents');
+  const columns = new Set(
+    tableInfo
+      .map((column) => column.name)
+      .filter((name): name is string => typeof name === 'string')
+  );
+
   if (!columns.size) return;
 
-  const tableInfo = await env.DB.prepare('PRAGMA table_info(documents)').all();
-  const contentColumn = (tableInfo.results ?? []).find((column) => (column as { name?: unknown }).name === 'content') as {
-    notnull?: unknown;
-  } | undefined;
+  const contentColumn = tableInfo.find((column) => column.name === 'content');
 
-  const needsRebuild = !columns.has('error_message') || contentColumn?.notnull === 1;
+  const needsRebuild = columns.has('r2_key') || !columns.has('error_message') || Number(contentColumn?.notnull ?? 0) === 1;
 
   if (!needsRebuild) {
     return;
   }
+
+  const contentExpression = columns.has('content') ? 'content' : 'NULL';
+  const chunkCountExpression = columns.has('chunk_count') ? 'COALESCE(chunk_count, 0)' : '0';
+  const statusExpression = columns.has('status')
+    ? "CASE WHEN status IN ('processing', 'indexed', 'failed') THEN status ELSE 'processing' END"
+    : "'processing'";
+  const errorMessageExpression = columns.has('error_message') ? 'error_message' : 'NULL';
 
   await env.DB.prepare('DROP TABLE IF EXISTS documents__new').run();
   await env.DB.prepare(
@@ -166,7 +186,7 @@ async function ensureDocumentsSchema(env: Env): Promise<void> {
 
   await env.DB.prepare(
     `INSERT INTO documents__new (id, user_id, name, type, size, content, chunk_count, status, error_message, created_at)
-     SELECT id, user_id, name, type, size, content, chunk_count, status, NULL, created_at
+     SELECT id, user_id, name, type, size, ${contentExpression}, ${chunkCountExpression}, ${statusExpression}, ${errorMessageExpression}, created_at
      FROM documents`
   ).run();
 

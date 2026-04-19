@@ -23,7 +23,7 @@ function SetupScreen() {
         <div className="space-y-4">
           <Step num={1} title="Clerk Auth" detail="Create a Clerk project at clerk.com and add VITE_CLERK_PUBLISHABLE_KEY to frontend/.env" />
           <Step num={2} title="Cloudflare D1" detail="Run: wrangler d1 create visualmind" />
-          <Step num={3} title="Cloudflare Vectorize" detail="Run: wrangler vectorize create visualmind-kb --dimensions=2048 --metric=cosine" />
+          <Step num={3} title="Cloudflare Vectorize" detail="Run: wrangler vectorize create visualmind-kb --dimensions=1024 --metric=cosine" />
           <Step num={4} title="Worker Secrets" detail="Create worker/.dev.vars from worker/.dev.vars.example for local dev. Use Wrangler secrets for deploy." />
         </div>
       </div>
