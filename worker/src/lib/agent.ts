@@ -36,11 +36,13 @@ export async function reactAgent(
   options: AgentOptions = {}
 ): Promise<AgentResult> {
   const selectedDocumentIds = normalizeSelectedDocumentIds(options.selectedDocumentIds);
+  const webSearchRequested = Boolean(options.useWebSearch) || /\bweb\s*search\b/i.test(userMessage);
   const ragTool = new RAGTool(env.VECTORIZE, env, userId, undefined, selectedDocumentIds);
   const registryTool = new RegistryLookupTool(env.DB, userId);
   const componentGenTool = new ComponentGenTool(env.DB, userId);
-  const allowWebSearch = Boolean(options.useWebSearch && env.SEARCH_API_KEY);
-  const webSearchTool = allowWebSearch ? new WebSearchTool(env.SEARCH_API_KEY as string) : null;
+  const searchApiKey = resolveSearchApiKey(env);
+  const allowWebSearch = webSearchRequested;
+  const webSearchTool = allowWebSearch ? new WebSearchTool(searchApiKey) : null;
 
   const tools: AgentTool[] = [ragTool, registryTool, componentGenTool];
   if (webSearchTool) {
@@ -55,8 +57,8 @@ export async function reactAgent(
       REACT_INSTRUCTIONS,
       buildRuntimeInstructions(userMessage, {
         allowWebSearch,
-        webSearchRequested: Boolean(options.useWebSearch),
-        hasSearchKey: Boolean(env.SEARCH_API_KEY),
+        webSearchRequested,
+        hasSearchKey: Boolean(searchApiKey),
         selectedDocumentCount: selectedDocumentIds.length
       }),
       `USER ID: ${userId}`,
@@ -76,7 +78,7 @@ export async function reactAgent(
   const maxIterations = 3;
   let iteration = 0;
 
-  if (webSearchTool && shouldPrefetchWebSearch(userMessage)) {
+  if (webSearchTool && webSearchRequested && shouldPrefetchWebSearch(userMessage)) {
     await runPrefetchStep({
       tool: webSearchTool,
       stepId: 'web-search-prefetch',
@@ -308,13 +310,13 @@ function buildRuntimeInstructions(
     );
   }
 
-  if (options.webSearchRequested && options.allowWebSearch) {
+  if (options.webSearchRequested && options.allowWebSearch && options.hasSearchKey) {
     instructions.push(
       'USER SETTING: Web search is enabled for this message. Use web_search for live, current, recent, market, weather, news, or otherwise external facts. Do not guess current information.'
     );
-  } else if (options.webSearchRequested && !options.hasSearchKey) {
+  } else if (options.webSearchRequested && options.allowWebSearch && !options.hasSearchKey) {
     instructions.push(
-      'USER SETTING: Web search was requested but no search API key is configured. Do not invent live facts. Explain briefly that web search is unavailable if current information is required.'
+      'USER SETTING: Web search is enabled, but no valid search API key is configured. Attempt web_search anyway, and if the tool returns an error, explain briefly that live lookup is unavailable.'
     );
   } else {
     instructions.push(
@@ -463,4 +465,24 @@ function normalizeSelectedDocumentIds(value: unknown): string[] {
   }
 
   return normalized;
+}
+
+function resolveSearchApiKey(env: Env): string {
+  const candidates = [
+    env.SEARCH_API_KEY,
+    (env as unknown as Record<string, unknown>).TAVILY_API_KEY,
+    typeof process !== 'undefined' ? process.env.SEARCH_API_KEY : undefined,
+    typeof process !== 'undefined' ? process.env.TAVILY_API_KEY : undefined
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string') {
+      const key = candidate.trim();
+      if (key.length > 0) {
+        return key;
+      }
+    }
+  }
+
+  return '';
 }

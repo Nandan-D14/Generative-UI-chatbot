@@ -12,7 +12,7 @@ export function chatRoutes(app: Hono<AppEnv>) {
     const { chatId, message, history, useWebSearch, selectedDocumentIds } = await c.req.json();
 
     const selectedIds = Array.isArray(selectedDocumentIds)
-      ? selectedDocumentIds.filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      ? selectedDocumentIds.filter((value: unknown): value is string => typeof value === 'string' && value.trim().length > 0)
       : [];
 
     const stream = await streamReActResponse(message, history, userId, c.env, {
@@ -98,6 +98,61 @@ export function chatRoutes(app: Hono<AppEnv>) {
         'UPDATE chats SET updated_at = ? WHERE id = ? AND user_id = ?'
       ).bind(Date.now(), body.chatId, userId).run();
 
+      if (body.role === 'assistant' && (renderType === 'react' || renderType === 'html') && code) {
+        const artifactId = crypto.randomUUID();
+        const title = componentName || (renderType === 'react' ? 'React Component' : 'HTML View');
+        const supportsMessageId = await artifactsHaveMessageIdColumn(c.env.DB);
+        let artifactSaved = false;
+
+        if (supportsMessageId) {
+          try {
+            const result = await c.env.DB.prepare(
+              `INSERT INTO artifacts (id, user_id, chat_id, message_id, title, render_type, code, created_at)
+               SELECT ?, ?, ?, ?, ?, ?, ?, ?
+               WHERE NOT EXISTS (
+                 SELECT 1
+                 FROM artifacts
+                 WHERE user_id = ?
+                 AND (
+                   message_id = ?
+                   OR (chat_id = ? AND render_type = ? AND code = ?)
+                 )
+               )`
+            ).bind(
+              artifactId, userId, body.chatId, id, title, renderType, code, Date.now(),
+              userId, id, body.chatId, renderType, code
+            ).run();
+
+            artifactSaved = Number(result.meta?.changes ?? 0) > 0;
+          } catch (artifactError) {
+            console.error('Error saving artifact from message (message_id path):', artifactError);
+          }
+        }
+
+        if (!artifactSaved) {
+          try {
+            await c.env.DB.prepare(
+              `INSERT INTO artifacts (id, user_id, chat_id, title, render_type, code, created_at)
+               SELECT ?, ?, ?, ?, ?, ?, ?
+               WHERE NOT EXISTS (
+                 SELECT 1
+                 FROM artifacts
+                 WHERE user_id = ?
+                 AND chat_id = ?
+                 AND render_type = ?
+                 AND code = ?
+               )`
+            ).bind(
+              artifactId, userId, body.chatId, title, renderType, code, Date.now(),
+              userId, body.chatId, renderType, code
+            ).run();
+          } catch (artifactError) {
+            // Do not fail message persistence if artifact sync fails.
+            console.error('Error saving artifact from message (fallback path):', artifactError);
+          }
+        }
+      }
+
       return c.json({ id });
     } catch (error) {
       console.error('Error saving message:', error);
@@ -151,4 +206,13 @@ export function chatRoutes(app: Hono<AppEnv>) {
   });
 
   app.route('/api/chat', router);
+}
+
+async function artifactsHaveMessageIdColumn(db: D1Database): Promise<boolean> {
+  try {
+    const schema = await db.prepare('PRAGMA table_info(artifacts)').all<{ name: string }>();
+    return schema.results.some((column) => column.name === 'message_id');
+  } catch {
+    return false;
+  }
 }
