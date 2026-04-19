@@ -19,7 +19,7 @@ export function createChatModel(env: Env) {
     apiKey: env.LLM_API_KEY,
     model: env.LLM_CHAT_MODEL.toLowerCase(),
     temperature: 0.3,
-    maxCompletionTokens: 16384,
+    maxTokens: 16384,
     configuration: { baseURL: env.LLM_BASE_URL }
   });
 }

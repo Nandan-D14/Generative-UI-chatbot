@@ -4,17 +4,23 @@
   "private": true,
   "scripts": {
     "dev": "wrangler dev --port 8787",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240815.0",
+    "@types/node": "^25.6.0",
+    "@types/papaparse": "^5.5.2",
     "typescript": "^5.5.3",
+    "vitest": "^4.1.4",
     "wrangler": "^3.72.0"
   },
   "dependencies": {
-    "@langchain/openai": "^0.2.5",
-    "@langchain/core": "^0.2.27",
     "@clerk/backend": "^1.6.0",
-    "hono": "^4.5.8"
+    "@langchain/core": "^0.2.27",
+    "@langchain/openai": "^0.2.5",
+    "hono": "^4.5.8",
+    "papaparse": "^5.5.3",
+    "pdfjs-dist": "^5.6.205"
   }
 }

@@ -41,7 +41,6 @@ flowchart TB
 
     subgraph Storage["Storage Layer"]
         D1[(D1 Database)]
-        R2[(R2 File Storage)]
         Vec[(Vectorize)]
     end
 
@@ -51,10 +50,11 @@ flowchart TB
     Agent --> LLM
     Agent --> Tools
     Tools -->|RAG Search| Vec
-    Tools -->|Component Lookup| R2
+    Tools -->|Component Lookup| D1
     Agent --> D1
     Renderer -->|iframe srcdoc| UI
-    KBUI -->|Upload| R2
+    KBUI -->|Upload metadata + text| D1
+    KBUI -->|Embeddings| Vec
 ```
 
 ---
@@ -102,7 +102,7 @@ sequenceDiagram
 | **Backend Runtime** | Cloudflare Workers (serverless edge) |
 | **Database** | Cloudflare D1 (SQLite) |
 | **Vector Store** | Cloudflare Vectorize |
-| **File Storage** | Cloudflare R2 |
+| **KB Storage** | D1 for extracted text + Vectorize for embeddings |
 | **LLM Orchestration** | LangChain.js |
 | **Reasoning Pattern** | ReAct (Reason + Act) |
 
@@ -190,6 +190,8 @@ flowchart LR
     end
 ```
 
+Supported KB uploads in v1: `.pdf`, `.csv`, `.txt`, `.md`. Inline indexing is limited to 5 MB files, 40 PDF pages, 200k extracted characters, and 400 chunks.
+
 ### 3. Component Registry
 
 Generated components are saved and reused:
@@ -200,7 +202,7 @@ flowchart TB
     LOOKUP --> |Found| REUSE[Reuse Component]
     LOOKUP --> |Not Found| GEN[Generate New]
     GEN --> SAVE[Save to Registry]
-    SAVE --> R2[(R2 Storage)]
+    SAVE --> D1[(D1 Code Storage)]
     REUSE --> RENDER[Render with Props]
     
     style REUSE fill:#90EE90
@@ -248,9 +250,10 @@ erDiagram
         string id PK
         string user_id FK
         string name
-        string r2_key
+        text content
         int chunk_count
         string status
+        string error_message
     }
     
     COMPONENTS {
@@ -258,7 +261,7 @@ erDiagram
         string user_id FK
         string name UK
         string render_type
-        string r2_key
+        text code
         int use_count
     }
     
@@ -304,9 +307,6 @@ wrangler d1 create visualmind
 
 # Create Vectorize index
 wrangler vectorize create visualmind-kb --dimensions=2048 --metric=cosine
-
-# Create R2 bucket
-wrangler r2 bucket create visualmind-storage
 ```
 
 ### 3. Configure Environment

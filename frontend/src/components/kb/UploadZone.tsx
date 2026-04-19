@@ -29,10 +29,11 @@ export function UploadZone({ onUpload, isUploading }: Props) {
         isDragging ? 'border-blue-500 bg-blue-50' : 'border-neutral-300 hover:border-neutral-400'
       } ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}
     >
-      <input type="file" onChange={handleFileSelect} className="hidden" id="file-upload" accept=".pdf,.txt,.md,.doc,.docx" />
+      <input type="file" onChange={handleFileSelect} className="hidden" id="file-upload" accept=".pdf,.csv,.txt,.md" />
       <label htmlFor="file-upload" className="cursor-pointer">
         <p className="text-lg font-medium text-neutral-700">{isUploading ? 'Processing...' : 'Drag & drop or click to upload'}</p>
-        <p className="text-sm text-neutral-400 mt-1">PDF, TXT, MD, DOC</p>
+        <p className="text-sm text-neutral-400 mt-1">Supported: PDF, CSV, TXT, MD</p>
+        <p className="text-xs text-neutral-400 mt-2">Inline limits: 5 MB max, PDFs up to 40 pages, extracted text up to 200k characters.</p>
       </label>
     </div>
   );

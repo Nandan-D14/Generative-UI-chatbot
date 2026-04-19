@@ -34,6 +34,7 @@ const schemaStatements = [
     content TEXT,
     chunk_count INTEGER DEFAULT 0,
     status TEXT DEFAULT 'processing' CHECK(status IN ('processing', 'indexed', 'failed')),
+    error_message TEXT,
     created_at INTEGER NOT NULL
   )`,
   `CREATE TABLE IF NOT EXISTS components (
@@ -74,7 +75,8 @@ const columnMigrations: Record<string, Record<string, string>> = {
     thinking_steps: `ALTER TABLE messages ADD COLUMN thinking_steps TEXT`
   },
   documents: {
-    content: `ALTER TABLE documents ADD COLUMN content TEXT`
+    content: `ALTER TABLE documents ADD COLUMN content TEXT`,
+    error_message: `ALTER TABLE documents ADD COLUMN error_message TEXT`
   },
   components: {
     code: `ALTER TABLE components ADD COLUMN code TEXT`
@@ -107,6 +109,8 @@ export function ensureSchema(env: Env): Promise<void> {
           }
         }
       }
+
+      await ensureDocumentsSchema(env);
     })().catch((error) => {
       schemaInitPromise = null;
       throw error;
@@ -127,4 +131,46 @@ async function getExistingColumns(env: Env, tableName: string): Promise<Set<stri
   } catch {
     return new Set();
   }
+}
+
+async function ensureDocumentsSchema(env: Env): Promise<void> {
+  const columns = await getExistingColumns(env, 'documents');
+  if (!columns.size) return;
+
+  const tableInfo = await env.DB.prepare('PRAGMA table_info(documents)').all();
+  const contentColumn = (tableInfo.results ?? []).find((column) => (column as { name?: unknown }).name === 'content') as {
+    notnull?: unknown;
+  } | undefined;
+
+  const needsRebuild = !columns.has('error_message') || contentColumn?.notnull === 1;
+
+  if (!needsRebuild) {
+    return;
+  }
+
+  await env.DB.prepare('DROP TABLE IF EXISTS documents__new').run();
+  await env.DB.prepare(
+    `CREATE TABLE IF NOT EXISTS documents__new (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id),
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      size INTEGER NOT NULL,
+      content TEXT,
+      chunk_count INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'processing' CHECK(status IN ('processing', 'indexed', 'failed')),
+      error_message TEXT,
+      created_at INTEGER NOT NULL
+    )`
+  ).run();
+
+  await env.DB.prepare(
+    `INSERT INTO documents__new (id, user_id, name, type, size, content, chunk_count, status, error_message, created_at)
+     SELECT id, user_id, name, type, size, content, chunk_count, status, NULL, created_at
+     FROM documents`
+  ).run();
+
+  await env.DB.prepare('DROP TABLE documents').run();
+  await env.DB.prepare('ALTER TABLE documents__new RENAME TO documents').run();
+  await env.DB.prepare('CREATE INDEX IF NOT EXISTS idx_documents_user ON documents(user_id)').run();
 }

@@ -34,9 +34,10 @@ CREATE TABLE IF NOT EXISTS documents (
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   size INTEGER NOT NULL,
-  content TEXT NOT NULL,
+  content TEXT,
   chunk_count INTEGER DEFAULT 0,
   status TEXT DEFAULT 'processing' CHECK(status IN ('processing', 'indexed', 'failed')),
+  error_message TEXT,
   created_at INTEGER NOT NULL
 );
 

@@ -13,14 +13,16 @@ export class RAGTool {
   constructor(
     private vectorize: VectorizeIndex,
     private env: Env,
-    private userId: string
+    private userId: string,
+    private embedder: typeof generateEmbedding = generateEmbedding
   ) {}
 
   async call(query: string): Promise<string> {
-    const embedding = await generateEmbedding(query, 'query', this.env);
+    const embedding = await this.embedder(query, 'query', this.env);
     const results = await this.vectorize.query(embedding, {
       topK: 5,
-      filter: { userId: this.userId }
+      filter: { userId: this.userId },
+      returnMetadata: 'all'
     });
 
     if (!results.matches.length) return 'No relevant documents found.';

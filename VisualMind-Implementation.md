@@ -2,6 +2,8 @@
 
 > **AI Chatbot SaaS with Live UI Component Generation, Knowledge Base Grounding, and Component Registry**
 
+> Current storage model note: the live repo uses `D1 + Vectorize` for knowledge-base ingestion and retrieval. Historical `R2` references below should be treated as superseded unless they refer to older design context.
+
 ---
 
 ## Table of Contents
@@ -44,10 +46,10 @@
 
 | Decision | Rationale |
 |---|---|
-| Cloudflare Workers over Vercel/Node | Edge execution, zero cold starts, native D1/Vectorize/R2 integration, lower cost at scale |
+| Cloudflare Workers over Vercel/Node | Edge execution, zero cold starts, native D1/Vectorize integration, lower cost at scale |
 | iframe srcdoc rendering over component compilation | No server-side JSX compilation needed, complete isolation, supports both static HTML and interactive React |
 | Component registry before code generation | Reduces LLM costs, ensures consistency, faster responses for common patterns |
-| D1 for relational data, Vectorize for embeddings, R2 for files/code | Each storage layer optimized for its workload |
+| D1 for relational data and extracted document text, Vectorize for embeddings | Each storage layer is used for the workload it serves best today |
 | Clerk for auth | Zero-auth-maintenance, webhook sync to D1, JWT verification at edge |
 
 ---
@@ -63,10 +65,10 @@
 | LLM orchestration | LangChain.js |
 | Vector store | Cloudflare Vectorize |
 | Database | Cloudflare D1 (SQLite) |
-| File storage | Cloudflare R2 |
+| KB storage | D1 for extracted text + Vectorize for embeddings |
 | Streaming | Cloudflare Workers streaming fetch |
 | Live UI rendering | Sandboxed iframe — HTML srcdoc for static, Babel+React CDN for interactive |
-| Component registry | D1 table storing component metadata + R2 storing JSX/HTML code |
+| Component registry | D1 table storing component metadata and JSX/HTML code |
 | Deployment | Cloudflare Pages (frontend) + Cloudflare Workers (backend) |
 
 ---
@@ -183,9 +185,10 @@ CREATE TABLE IF NOT EXISTS documents (
   name TEXT NOT NULL,
   type TEXT NOT NULL,
   size INTEGER NOT NULL,
-  r2_key TEXT NOT NULL,
+  content TEXT,
   chunk_count INTEGER DEFAULT 0,
   status TEXT DEFAULT 'processing' CHECK(status IN ('processing', 'indexed', 'failed')),
+  error_message TEXT,
   created_at INTEGER NOT NULL
 );
 
@@ -196,7 +199,7 @@ CREATE TABLE IF NOT EXISTS components (
   name TEXT NOT NULL UNIQUE,
   description TEXT,
   render_type TEXT NOT NULL CHECK(render_type IN ('html', 'react')),
-  r2_key TEXT NOT NULL,
+  code TEXT NOT NULL,
   props_schema TEXT,
   use_count INTEGER DEFAULT 0,
   created_at INTEGER NOT NULL,
@@ -212,7 +215,6 @@ CREATE TABLE IF NOT EXISTS artifacts (
   title TEXT NOT NULL,
   render_type TEXT NOT NULL,
   code TEXT NOT NULL,
-  thumbnail_r2_key TEXT,
   created_at INTEGER NOT NULL
 );
 
@@ -2540,7 +2542,7 @@ export function SettingsPage() {
 | **iframe sandbox** | Always `sandbox="allow-scripts"`, never `allow-same-origin` |
 | **Clerk JWT validation** | Verify on every worker request with `@clerk/backend` |
 | **User scoping** | All D1 queries scoped to authenticated user ID — no cross-user data leakage |
-| **R2 key namespacing** | All keys prefixed with userId: `documents/{userId}/{docId}` |
+| **Vector metadata scoping** | All Vectorize entries carry `userId`, `docId`, and `docName`; retrieval is filtered by `userId` |
 | **Component code validation** | Validate before saving to registry, sanitize if needed |
 | **Rate limiting** | Use Cloudflare Workers AI Gateway or implement token bucket |
 | **CORS** | Strict origin matching, no wildcards |
@@ -2557,9 +2559,6 @@ wrangler d1 create visualmind
 
 # Create Vectorize index
 wrangler vectorize create visualmind-kb --dimensions=1536 --metric=cosine
-
-# Create R2 bucket
-wrangler r2 bucket create visualmind-storage
 ```
 
 ### 2. Configure wrangler.toml
@@ -2579,10 +2578,6 @@ database_id = "YOUR_D1_ID"
 [[vectorize]]
 binding = "VECTORIZE"
 index_name = "visualmind-kb"
-
-[[r2_buckets]]
-binding = "R2"
-bucket_name = "visualmind-storage"
 
 [vars]
 CLERK_SECRET_KEY = ""
@@ -2626,7 +2621,7 @@ Both hot-reload on changes. Use `wrangler tail` to inspect worker logs.
 
 ## Build Order (Recommended)
 
-1. Set up Clerk project + Cloudflare resources (D1, Vectorize, R2)
+1. Set up Clerk project + Cloudflare resources (D1, Vectorize)
 2. Run database migrations
 3. Implement shared types
 4. Implement worker: middleware → lib → routes

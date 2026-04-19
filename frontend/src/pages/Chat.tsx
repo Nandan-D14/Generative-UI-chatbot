@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { ChatWindow } from '../components/chat/ChatWindow';
 import { InputBar } from '../components/chat/InputBar';
@@ -32,6 +32,7 @@ export function ChatPage() {
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const skipNextMessageLoadRef = useRef(false);
   const { isStreaming, currentText, thinkingSteps, completeResponse, startStream, reset } = useStream();
 
   const handleNewChat = useCallback(() => {
@@ -109,6 +110,12 @@ export function ChatPage() {
       setMessages([]);
       return;
     }
+
+    if (skipNextMessageLoadRef.current) {
+      skipNextMessageLoadRef.current = false;
+      return;
+    }
+
     loadMessages(activeChat);
   }, [activeChat]);
 
@@ -134,7 +141,7 @@ export function ChatPage() {
           text: msg.text,
           renderType: msg.render_type,
           componentName: msg.component_name,
-          props: msg.component_props ? JSON.parse(msg.component_props) : undefined,
+          props: parseProps(msg.component_props),
           code: msg.code
         } : undefined,
         thinkingSteps: parseThinkingSteps(msg.thinking_steps),
@@ -144,8 +151,9 @@ export function ChatPage() {
     } catch (err) {
       console.error('Failed to load messages:', err);
       setApiError('The worker API is unavailable. Start the worker on port 8787 and verify worker/.dev.vars contains real secrets.');
+    } finally {
+      setIsLoadingMessages(false);
     }
-    setIsLoadingMessages(false);
   }, [getToken]);
 
   const saveMessage = useCallback(async (
@@ -183,7 +191,10 @@ export function ChatPage() {
 
   const handleSend = async (message: string, options: { useWebSearch: boolean }) => {
     const token = await getToken();
-    if (!token) return;
+    if (!token) {
+      setApiError('Authentication token unavailable. Sign in again.');
+      return;
+    }
     setApiError(null);
 
     let chatId = activeChat;
@@ -201,6 +212,7 @@ export function ChatPage() {
       if (res.ok) {
         const data = await res.json();
         chatId = data.id;
+        skipNextMessageLoadRef.current = true;
         setActiveChat(chatId);
         await loadChats();
       } else {
@@ -226,10 +238,21 @@ export function ChatPage() {
     history.push({ role: 'user', content: message });
 
     // Start streaming
-    const streamResult = await startStream(message, chatId, history, token, options);
+    let streamResult: Awaited<ReturnType<typeof startStream>>;
+    try {
+      streamResult = await startStream(message, chatId, history, token, options);
+    } catch (error) {
+      setApiError((error as Error).message || 'Unable to start chat stream.');
+      return;
+    }
+
+    if (!streamResult?.response) {
+      setApiError('The worker did not return a chat response.');
+      return;
+    }
 
     // Save assistant response
-    if (streamResult?.response && chatId) {
+    if (chatId) {
       const assistantMsg: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -304,6 +327,19 @@ function parseThinkingSteps(raw: unknown): ReActStep[] {
     return parsed.filter(isReActStep);
   } catch {
     return [];
+  }
+}
+
+function parseProps(raw: unknown): Record<string, unknown> {
+  if (typeof raw !== 'string' || !raw.trim()) return {};
+
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown>
+      : {};
+  } catch {
+    return {};
   }
 }
 

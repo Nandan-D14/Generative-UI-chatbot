@@ -58,9 +58,10 @@ export interface Document {
   name: string;
   type: string;
   size: number;
-  r2_key: string;
+  content: string | null;
   chunk_count: number;
   status: 'processing' | 'indexed' | 'failed';
+  error_message: string | null;
   created_at: number;
 }
 
@@ -70,7 +71,7 @@ export interface Component {
   name: string;
   description: string | null;
   render_type: 'html' | 'react';
-  r2_key: string;
+  code: string | null;
   props_schema: string | null;
   use_count: number;
   created_at: number;
@@ -85,6 +86,5 @@ export interface Artifact {
   title: string;
   render_type: string;
   code: string;
-  thumbnail_r2_key: string | null;
   created_at: number;
 }
